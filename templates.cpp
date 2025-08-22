@@ -943,6 +943,10 @@ inline Uint qPowMod(Uint base, Uint exp, Uint mod) {
 	return res;
 }
 
+/**
+ * @brief solve the equation a * x + b * y == gcd(a, b)
+ * @return gcd(a, b)
+ */
 inline int64_t exGcd(int64_t a, int64_t b, int64_t &x, int64_t &y) {
 	x = 1, y = 0;
 	int64_t u = 0, v = 1;
