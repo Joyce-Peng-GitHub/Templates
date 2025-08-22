@@ -467,6 +467,92 @@ protected:
 
 ### Segment Tree
 
+```cpp
+size_t n;
+std::vector<uint64_t> arr, sum, lzy;
+
+inline size_t leftChild(size_t rt) { return (2 * rt + 1); }
+inline size_t rightChild(size_t rt) { return (2 * (rt + 1)); }
+inline size_t midOf(size_t beg, size_t end) { return (beg + (end - beg) / 2); }
+
+inline void pushUp(size_t rt) {
+	sum[rt] = sum[leftChild(rt)] + sum[rightChild(rt)];
+}
+
+inline void pushDown(size_t rt, size_t nd_beg, size_t nd_end) {
+	if (!lzy[rt]) {
+		return;
+	}
+	size_t nd_mid = midOf(nd_beg, nd_end);
+	size_t lch = leftChild(rt), rch = rightChild(rt);
+	sum[lch] += lzy[rt] * (nd_mid - nd_beg);
+	sum[rch] += lzy[rt] * (nd_end - nd_mid);
+	lzy[lch] += lzy[rt];
+	lzy[rch] += lzy[rt];
+	lzy[rt] = 0;
+}
+
+void build(size_t rt, size_t nd_beg, size_t nd_end) {
+	if (nd_beg + 1 == nd_end) {
+		sum[rt] = arr[nd_beg];
+		return;
+	}
+	size_t nd_mid = midOf(nd_beg, nd_end);
+	build(leftChild(rt), nd_beg, nd_mid);
+	build(rightChild(rt), nd_mid, nd_end);
+	pushUp(rt);
+}
+
+inline void build() {
+	sum.resize(4 * n);
+	lzy.resize(4 * n);
+	build(0, 0, n);
+}
+
+void modify(size_t idx, size_t nd_beg, size_t nd_end,
+			size_t beg, size_t end, uint64_t diff) {
+	if (beg <= nd_beg && nd_end <= end) {
+		sum[idx] += (nd_end - nd_beg) * diff;
+		lzy[idx] += diff;
+		return;
+	}
+	pushDown(idx, nd_beg, nd_end);
+	size_t nd_mid = midOf(nd_beg, nd_end);
+	if (beg < nd_mid) {
+		modify(leftChild(idx), nd_beg, nd_mid, beg, end, diff);
+	}
+	if (nd_mid < end) {
+		modify(rightChild(idx), nd_mid, nd_end, beg, end, diff);
+	}
+	pushUp(idx);
+}
+
+inline void modify(size_t beg, size_t end, uint64_t diff) {
+	modify(0, 0, n, beg, end, diff);
+}
+
+uint64_t query(size_t idx, size_t nd_beg, size_t nd_end,
+			   size_t beg, size_t end) {
+	if (beg <= nd_beg && nd_end <= end) {
+		return sum[idx];
+	}
+	pushDown(idx, nd_beg, nd_end);
+	size_t nd_mid = midOf(nd_beg, nd_end);
+	uint64_t res = 0;
+	if (beg < nd_mid) {
+		res += query(leftChild(idx), nd_beg, nd_mid, beg, end);
+	}
+	if (nd_mid < end) {
+		res += query(rightChild(idx), nd_mid, nd_end, beg, end);
+	}
+	return res;
+}
+
+inline uint64_t query(size_t beg, size_t end) {
+	return query(0, 0, n, beg, end);
+}
+```
+
 ## Number Theorem
 
 ### Cantor Expansion
