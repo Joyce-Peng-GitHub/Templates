@@ -918,7 +918,39 @@ discretize(Iter begin, Iter end, std::vector<size_t> &res,
 
 ### Longest Increasing Subsequence
 
-
+```cpp
+/**
+ * @return indices of elements consisting
+ * 	one longest increasing subsequence of [@param begin, @param end)
+ */
+template <typename Iter,
+		  typename Cmp = std::less<typename std::iterator_traits<Iter>::value_type>,
+		  typename = RequireFwdIter<Iter>>
+std::vector<size_t> longestIncrSubseq(Iter begin, Iter end, Cmp cmp = Cmp()) {
+	auto cmpVal = [begin, end, &cmp](size_t lhs, size_t rhs) {
+		return cmp(*std::next(begin, lhs), *std::next(begin, rhs));
+	};
+	auto pre = std::vector<size_t>(std::distance(begin, end));
+	std::vector<size_t> min_end, res;
+	min_end.reserve(pre.size());
+	for (size_t i = 0; begin != end; ++begin, ++i) {
+		size_t j = std::lower_bound(min_end.begin(), min_end.end(), i, cmpVal) -
+				   min_end.begin();
+		if (j == min_end.size()) {
+			min_end.emplace_back(i);
+		} else {
+			min_end[j] = i;
+		}
+		pre[i] = (j ? min_end[j - 1] : size_t(-1));
+	}
+	res.reserve(min_end.size());
+	for (size_t p = min_end.back(); ~p; p = pre[p]) {
+		res.emplace_back(p);
+	}
+	std::reverse(res.begin(), res.end());
+	return res;
+}
+```
 
 ### Prefix Function
 
