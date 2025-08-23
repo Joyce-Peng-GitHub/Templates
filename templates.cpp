@@ -1399,6 +1399,10 @@ public:
 	std::vector<std::vector<size_t>> kruskal() const;
 	std::vector<size_t> prim(size_t rt = 0) const;
 
+	std::vector<Weight> dijkstra(size_t src) const;
+	std::vector<Weight> bellmanFord(size_t src) const;
+	std::vector<Weight> spfa(size_t src) const;
+
 protected:
 	std::vector<Edge> m_edges;
 	std::vector<std::vector<size_t>> m_adj;
@@ -1708,99 +1712,96 @@ floydMatMul(std::vector<std::vector<Weight>> weights) {
 	return res;
 }
 
-template <typename Weight>
-inline std::vector<Weight>
-dijkstra(const std::vector<std::vector<std::pair<size_t, Weight>>> &adj, // {to, weight}
-		 size_t src) {
-	size_t n = adj.size();
-	if (!n) {
-		return {};
-	}
-	using Adj = std::pair<Weight, size_t>; // {weight, to}
+template <typename Weight, bool is_directed>
+inline std::vector<Weight> Graph<Weight, is_directed>::dijkstra(size_t src) const {
+	using Adj = std::pair<Weight, size_t>; // (dist, vertex)
 	std::priority_queue<Adj, std::vector<Adj>, std::greater<Adj>> pq;
-	auto dist = std::vector<Weight>(n, std::numeric_limits<Weight>::max());
+	std::vector<Weight> dist(m_adj.size(), std::numeric_limits<Weight>::max());
+	std::vector<bool> vis(m_adj.size());
+
 	pq.emplace(0, src);
 	dist[src] = 0;
-	auto vis = std::vector<bool>(n);
 	while (pq.size()) {
-		auto u = pq.top().second;
+		auto frm = pq.top().second;
 		pq.pop();
-		if (vis[u]) {
+		if (vis[frm]) {
 			continue;
 		}
-		vis[u] = true;
-		for (auto &pr : adj[u]) {
-			auto &v = pr.first;
-			auto &w = pr.second;
-			if (dist[v] > dist[u] + w) {
-				pq.emplace(dist[v] = dist[u] + w, v);
+		vis[frm] = true;
+		for (auto i : m_adj[frm]) {
+			auto to = (is_directed
+						   ? m_edges[i].v
+						   : ((m_edges[i].u == frm) ? m_edges[i].v : m_edges[i].u));
+			auto w = m_edges[i].w;
+			if (dist[to] > dist[frm] + w) {
+				pq.emplace(dist[to] = dist[frm] + w, to);
 			}
 		}
 	}
+
 	return dist;
 }
 
-template <typename Weight>
+template <typename Weight, bool is_directed>
 inline std::vector<Weight>
-bellmanFord(size_t n,
-			const std::vector<std::tuple<size_t, size_t, Weight>> &edges, // {from, to, weight}
-			size_t start) {
-	if (!n) {
-		return {};
-	}
-	auto dist = std::vector<Weight>(n, std::numeric_limits<Weight>::max());
-	dist[start] = 0;
-	for (size_t cnt = 0; cnt != n; ++cnt) {
+Graph<Weight, is_directed>::bellmanFord(size_t src) const {
+	std::vector<Weight> dist(m_adj.size(), std::numeric_limits<Weight>::max());
+	auto relax = [&](size_t u, size_t v, Weight w) -> bool {
+		if (dist[u] != std::numeric_limits<Weight>::max() &&
+			dist[v] > dist[u] + w) {
+			dist[v] = dist[u] + w;
+			return false;
+		}
+		return true;
+	};
+
+	dist[src] = 0;
+	for (size_t cnt = 0; cnt != m_adj.size(); ++cnt) {
 		bool flag = true;
-		for (auto &edge : edges) {
-			auto &u = std::get<0>(edge), &v = std::get<1>(edge);
-			auto &w = std::get<2>(edge);
-			if (dist[u] != std::numeric_limits<Weight>::max() &&
-				dist[v] > dist[u] + w) {
-				dist[v] = dist[u] + w;
-				flag = false;
+		for (auto &edge : m_edges) {
+			flag &= relax(edge.u, edge.v, edge.w);
+			if (!is_directed) {
+				flag &= relax(edge.v, edge.u, edge.w);
 			}
 		}
 		if (flag) {
 			return dist;
 		}
 	}
-	return {}; // A circle of neg-weight edges can be reached from the start point.
+	return {}; // negative cycle detected
 }
 
-template <typename Weight>
+template <typename Weight, bool is_directed>
 inline std::vector<Weight>
-spfa(const std::vector<std::vector<std::pair<size_t, Weight>>> &adj, // {to, weight}
-	 size_t start) {
-	size_t n = adj.size();
-	if (!n) {
-		return {};
-	}
-	auto dist = std::vector<Weight>(n, std::numeric_limits<Weight>::max());
-	auto inq = std::vector<bool>(n);
-	auto cnt = std::vector<size_t>(n);
-	dist[start] = 0;
+Graph<Weight, is_directed>::spfa(size_t src) const {
+	std::vector<Weight> dist(m_adj.size(), std::numeric_limits<Weight>::max());
+	std::vector<bool> inq(m_adj.size());
+	std::vector<size_t> cnt(m_adj.size());
 	std::queue<size_t> q;
-	q.emplace(start);
+
+	dist[src] = 0;
+	q.emplace(src);
 	while (q.size()) {
-		auto u = q.front();
-		inq[u] = false;
+		auto frm = q.front();
+		inq[frm] = false;
 		q.pop();
-		for (auto &e : adj[u]) {
-			auto v = e.first;
-			auto w = e.second;
-			if (dist[v] > dist[u] + w) {
-				dist[v] = dist[u] + w;
+		for (auto i : m_adj[frm]) {
+			auto to = (is_directed
+						   ? m_edges[i].v
+						   : ((m_edges[i].u == frm) ? m_edges[i].v : m_edges[i].u));
+			auto w = m_edges[i].w;
+			if (dist[to] > dist[frm] + w) {
+				dist[to] = dist[frm] + w;
 				/**
 				 * the shortest path between 2 vertices consists of at most
 				 * (n - 1) edgess
 				 */
-				if ((cnt[v] = cnt[u] + 1) >= n) {
+				if ((cnt[to] = cnt[frm] + 1) >= m_adj.size()) {
 					return {};
 				}
-				if (!inq[v]) {
-					inq[v] = true;
-					q.emplace(v);
+				if (!inq[to]) {
+					inq[to] = true;
+					q.emplace(to);
 				}
 			}
 		}
