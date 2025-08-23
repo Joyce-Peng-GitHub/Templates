@@ -1501,6 +1501,32 @@ public:
 		return {{cut_verts, vbccs}, {bridges, ebccs}};
 	}
 
+	std::vector<size_t> toposort() const {
+		static_assert(is_directed,
+					  "Topological sorting is only applicable to directed graphs.");
+		std::vector<size_t> indeg(m_adj.size());
+		for (auto &edge : m_edges) {
+			++indeg[edge.v];
+		}
+		std::vector<size_t> res, zero_indeg_verts;
+		for (size_t i = 0; i != m_adj.size(); ++i) {
+			if (!indeg[i]) {
+				zero_indeg_verts.emplace_back(i);
+			}
+		}
+		while (zero_indeg_verts.size()) {
+			size_t frm = zero_indeg_verts.back();
+			zero_indeg_verts.pop_back();
+			res.emplace_back(frm);
+			for (auto i : m_adj[frm]) {
+				if (!(--indeg[m_edges[i].v])) {
+					zero_indeg_verts.emplace_back(m_edges[i].v);
+				}
+			}
+		}
+		return ((res.size() == m_adj.size()) ? res : std::vector<size_t>());
+	}
+
 protected:
 	std::vector<Edge> m_edges;
 	std::vector<std::vector<size_t>> m_adj;
@@ -1519,34 +1545,6 @@ protected:
 
 private:
 };
-
-inline std::vector<size_t>
-toposort(const std::vector<std::vector<size_t>> &adj_vers) {
-	size_t n = adj_vers.size();
-	auto indeg = std::vector<uint32_t>(n);
-	for (size_t from = 0; from != n; ++from) {
-		for (size_t to : adj_vers[from]) {
-			++indeg[to];
-		}
-	}
-	std::vector<size_t> res, zero_indeg_vers;
-	for (size_t i = 0; i != n; ++i) {
-		if (!indeg[i]) {
-			zero_indeg_vers.push_back(i);
-		}
-	}
-	while (zero_indeg_vers.size()) {
-		size_t from = zero_indeg_vers.back();
-		zero_indeg_vers.pop_back();
-		res.push_back(from);
-		for (size_t to : adj_vers[from]) {
-			if (!(--indeg[to])) {
-				zero_indeg_vers.push_back(to);
-			}
-		}
-	}
-	return ((res.size() == n) ? res : std::vector<size_t>());
-}
 
 template <typename Weight>
 inline std::vector<size_t>
