@@ -194,7 +194,72 @@ private:
 
 ## Data Structures
 
-### SparseTable
+### Disjoint Set Union
+
+```cpp
+class Dsu {
+public:
+	Dsu(size_t n = 0) : m_fa_or_sz(n, -1) {}
+
+	void assign(size_t n) { m_fa_or_sz.assign(n, -1); }
+	void clear() { m_fa_or_sz.clear(); }
+	void resize(size_t n) { m_fa_or_sz.resize(n, -1); }
+
+	size_t size() const noexcept { return m_fa_or_sz.size(); }
+	bool empty() const noexcept { return m_fa_or_sz.empty(); }
+
+	size_t leader(size_t x) {
+		if (m_fa_or_sz[x] < 0) {
+			return x;
+		}
+		return (m_fa_or_sz[x] = leader(m_fa_or_sz[x]));
+	}
+	bool same(size_t x, size_t y) { return (leader(x) == leader(y)); }
+
+	size_t size(size_t x) { return -m_fa_or_sz[leader(x)]; }
+
+	size_t merge(size_t x, size_t y) {
+		x = leader(x);
+		y = leader(y);
+		if (x == y) {
+			return x;
+		}
+		if (-m_fa_or_sz[x] < -m_fa_or_sz[y]) {
+			std::swap(x, y);
+		}
+		m_fa_or_sz[x] += m_fa_or_sz[y];
+		m_fa_or_sz[y] = x;
+		return x;
+	}
+
+	std::vector<std::vector<size_t>> groups() {
+		std::vector<size_t> leader_of(size()), sz(size());
+		for (size_t i = 0; i != size(); ++i) {
+			++sz[leader_of[i] = leader(i)];
+		}
+		std::vector<std::vector<size_t>> grps(size());
+		for (size_t i = 0; i != size(); ++i) {
+			grps[leader_of[i]].reserve(sz[leader_of[i]]);
+		}
+		for (size_t i = 0; i != size(); ++i) {
+			grps[leader_of[i]].emplace_back(i);
+		}
+		grps.erase(std::remove_if(grps.begin(), grps.end(),
+								  [](const std::vector<size_t> &grp) {
+									  return grp.empty();
+								  }),
+				   grps.end());
+		return grps;
+	}
+
+protected:
+	std::vector<ssize_t> m_fa_or_sz; // if root, stores -size; else stores fa
+
+private:
+};
+```
+
+### Sparse Table
 
 ```cpp
 template <typename T, typename Cmp = std::less<>>
@@ -202,7 +267,7 @@ struct Min {
 	inline const T &operator()(const T &lhs, const T &rhs) const {
 		return std::min(lhs, rhs, Cmp());
 	}
-}
+};
 
 template <typename T, typename Cmp = std::less<>>
 struct Max {
@@ -290,10 +355,10 @@ protected:
 	Table m_data; // m_data[i][j] maintains Oper(data[i, i + 2 ** j))
 
 private:
-}
+};
 ```
 
-### MonoDeque
+### Monotonic Deque
 
 ```cpp
 template <typename T, typename Cmp = std::less<T>, typename Dq = std::deque<T>>
@@ -361,7 +426,7 @@ public:
 protected:
 	Cmp m_cmp;
 	Dq m_dq;
-}
+};
 ```
 
 ### Fenwick Tree
@@ -470,7 +535,7 @@ protected:
 			}
 		}
 	}
-}
+};
 ```
 
 ### Segment Tree
