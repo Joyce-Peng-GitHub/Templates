@@ -686,6 +686,60 @@ inline std::vector<uint64_t> derangements(uint64_t max, uint64_t mod) {
 }
 ```
 
+### Prime Sieves
+
+```cpp
+std::vector<uint32_t> sieveOfEratosthenes(uint32_t max) {
+	if (max <= 1) {
+		return {};
+	}
+	auto not_prime = std::vector<bool>(max + 1);
+	std::vector<uint32_t> primes;
+	primes.emplace_back(2);
+	for (uint32_t i = 4; i <= max; i += 2) {
+		not_prime[i] = true;
+	}
+	for (uint32_t i = 3; i * i <= max; i += 2) {
+		if (not_prime[i]) {
+			continue;
+		}
+		for (uint32_t j = (i << 1); j <= max; j += i) {
+			not_prime[j] = true;
+		}
+	}
+	for (uint32_t i = 3; i <= max; i += 2) {
+		if (!not_prime[i]) {
+			primes.emplace_back(i);
+		}
+	}
+	return primes;
+}
+
+std::vector<uint32_t> linearSieve(uint32_t max) {
+	if (max <= 1) {
+		return {};
+	}
+	auto not_prime = std::vector<bool>(max + 1);
+	std::vector<uint32_t> primes;
+	primes.emplace_back(2);
+	for (uint32_t i = 3; i <= max; i += 2) {
+		if (!not_prime[i]) {
+			primes.emplace_back(i);
+		}
+		for (auto j : primes) {
+			if (j * i > max) {
+				break;
+			}
+			not_prime[j * i] = true; // j is the minimum prime factor of i * j
+			if (i % j == 0) {
+				break;
+			}
+		}
+	}
+	return primes;
+}
+```
+
 ### Merge Sort Counting Inversions
 
 ```cpp
