@@ -1,5 +1,9 @@
 # Templates
 
+[TOC]
+
+<div STYLE="page-break-after: always;"></div>
+
 ## Utilities
 
 ### Iterator Requirements
@@ -137,6 +141,8 @@ discretize(Iter begin, Iter end, std::vector<size_t> &res,
 }
 ```
 
+<div STYLE="page-break-after: always;"></div>
+
 ## Optimization Tricks
 
 ### Compiler Optimization Switch
@@ -183,6 +189,8 @@ protected:
 private:
 };
 ```
+
+<div STYLE="page-break-after: always;"></div>
 
 ## Data Structures
 
@@ -553,6 +561,8 @@ inline uint64_t query(size_t beg, size_t end) {
 }
 ```
 
+<div STYLE="page-break-after: always;"></div>
+
 ## Number Theorem
 
 ### Cantor Expansion
@@ -784,6 +794,8 @@ inline size_t mergeSort(OutputIter first, OutputIter last) {
 }
 ```
 
+<div STYLE="page-break-after: always;"></div>
+
 ## Polynomial
 
 ### Fast Fourier Transform
@@ -834,6 +846,8 @@ inline void fft(std::vector<std::complex<Float>> &arr, bool inv = false) {
 	}
 }
 ```
+
+<div STYLE="page-break-after: always;"></div>
 
 ## String
 
@@ -1054,6 +1068,8 @@ manacher(Iter begin, Iter end) {
 	return {odd, even};
 }
 ```
+
+<div STYLE="page-break-after: always;"></div>
 
 ## Graph Theory
 
