@@ -978,6 +978,23 @@ inline size_t periodLength(Iter begin, Iter end) {
 
 ### Suffix Array
 
+设$\Sigma$为字符集，字符串$\vec s\in\Sigma^n\ (n\in\mathbb N)$。称数组$\vec{sa}\in\mathbb N^n$为字符串$\vec s$的*后缀数组*，当且仅当其满足对任意$i\in\mathbb N\cap[0,n)$，$s[sa_i,n)$是$\vec s$所有后缀中字典序第$i$小的。求后缀数组的同时，记录排名数组$\vec{ra}$，使得对任意$i\in\mathbb N\cap[0,n)$，$ra_i$是$s[i,n)$在$\vec s$所有后缀中按字典序排序后的排名，因此有
+$$
+sa_{ra_i}=i=ra_{sa_i}
+$$
+
+令$lcp(i,j)$表示字符串$\vec s$分别从$i$和$j$开始的后缀的最长公共前缀（longest common prefix）的长度。height数组$\vec h\in\mathbb N^n$定义为
+$$
+\vec h=(lcp(sa_{i-1},sa_i))_{i=0}^{n-1}
+$$
+即$h_i$为排名第$i$位的后缀与排在它前面的后缀的LCP长度。特别地，规定$h_0=0$。于是有
+$$
+h_{ra_i}=lcp(sa_{ra_i},sa_{ra_i-1})=lcp(i,sa_{ra_i-1})
+$$
+即$h_{ra_i}$是从$i$处开始的后缀与排在它前一位的后缀的LCP长度。
+
+最长公共前缀引理（LCP lemma）：$h_{ra_i}\geq h_{ra_{i-1}}-1$。
+
 ```cpp
 /**
  * @return {sa, ra, height}
