@@ -119,28 +119,6 @@ inline unsigned ceilLogn2(uint64_t x) {
 }
 ```
 
-### Discretization
-
-```cpp
-/**
- * @return sorted unique elements
- */
-template <typename Iter, typename Cmp = std::less<>, typename Eq = std::equal_to<>>
-inline std::vector<typename std::iterator_traits<Iter>::value_type>
-discretize(Iter begin, Iter end, std::vector<size_t> &res,
-		   Cmp cmp = Cmp(), Eq eq = Eq()) {
-	auto unq = std::vector<typename std::iterator_traits<Iter>::value_type>(begin, end);
-	size_t n = unq.size();
-	std::sort(unq.begin(), unq.end(), cmp);
-	unq.erase(std::unique(unq.begin(), unq.end(), eq), unq.end());
-	res.resize(n);
-	for (size_t i = 0; i != n; ++i) {
-		res[i] = std::lower_bound(unq.begin(), unq.end(), *(begin++), cmp) - unq.begin();
-	}
-	return unq;
-}
-```
-
 <div STYLE="page-break-after: always;"></div>
 
 ## Optimization Tricks
@@ -914,7 +892,33 @@ inline void fft(std::vector<std::complex<Float>> &arr, bool inv = false) {
 
 <div STYLE="page-break-after: always;"></div>
 
-## String
+## Sequence
+
+### Discretization
+
+```cpp
+/**
+ * @return sorted unique elements
+ */
+template <typename Iter, typename Cmp = std::less<>, typename Eq = std::equal_to<>>
+inline std::vector<typename std::iterator_traits<Iter>::value_type>
+discretize(Iter begin, Iter end, std::vector<size_t> &res,
+		   Cmp cmp = Cmp(), Eq eq = Eq()) {
+	auto unq = std::vector<typename std::iterator_traits<Iter>::value_type>(begin, end);
+	size_t n = unq.size();
+	std::sort(unq.begin(), unq.end(), cmp);
+	unq.erase(std::unique(unq.begin(), unq.end(), eq), unq.end());
+	res.resize(n);
+	for (size_t i = 0; i != n; ++i) {
+		res[i] = std::lower_bound(unq.begin(), unq.end(), *(begin++), cmp) - unq.begin();
+	}
+	return unq;
+}
+```
+
+### Longest Increasing Subsequence
+
+
 
 ### Prefix Function
 
