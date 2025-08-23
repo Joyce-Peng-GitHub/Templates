@@ -1396,6 +1396,9 @@ public:
 
 	std::vector<size_t> toposort() const;
 
+	std::vector<std::vector<size_t>> kruskal() const;
+	std::vector<size_t> prim(size_t rt = 0) const;
+
 protected:
 	std::vector<Edge> m_edges;
 	std::vector<std::vector<size_t>> m_adj;
@@ -1460,9 +1463,7 @@ Graph<Weight, is_directed>::tarjanSccs() const {
 	}
 	return sccs;
 }
-/**
- * @return {{cut_verts, vbccs}, {bridges, ebccs}}
- */
+
 template <typename Weight, bool is_directed>
 inline std::pair<std::pair<std::vector<std::vector<size_t>>,
 						   std::vector<std::vector<size_t>>>,
@@ -1560,94 +1561,93 @@ inline std::vector<size_t> Graph<Weight, is_directed>::toposort() const {
 	return ((res.size() == m_adj.size()) ? res : std::vector<size_t>());
 }
 
-template <typename Weight>
-inline std::vector<size_t>
-kruskal(size_t n,
-		const std::vector<std::tuple<size_t, size_t, Weight>> &edges // {from, to, weight}
-) {
-	if (!n) {
+template <typename Weight, bool is_directed>
+inline std::vector<std::vector<size_t>>
+Graph<Weight, is_directed>::kruskal() const {
+	static_assert(!is_directed,
+				  "Kruskal's algorithm is only applicable to undirected graphs.");
+	if (m_adj.size() < 2) {
 		return {};
 	}
-	size_t m = edges.size();
-	auto sorted_edges =
-		std::vector<std::tuple<Weight, size_t, size_t, size_t>>(m); // {weight, from, to, index}
-	for (size_t i = 0; i != m; ++i) {
-		sorted_edges[i] = {std::get<2>(edges[i]),
-						   std::get<0>(edges[i]),
-						   std::get<1>(edges[i]),
-						   i};
-	}
-	std::sort(sorted_edges.begin(), sorted_edges.end()); // sort edges by weight
-	auto dsu = std::vector<size_t>(n);
-	for (size_t i = 0; i != n; ++i) {
-		dsu[i] = i;
-	}
+
+	std::vector<size_t> sorted(m_edges.size());
+	std::iota(sorted.begin(), sorted.end(), 0);
+	std::sort(sorted.begin(), sorted.end(),
+			  [&](size_t lhs, size_t rhs) {
+				  return (m_edges[lhs].w < m_edges[rhs].w);
+			  });
+
+	std::vector<size_t> dsu(m_adj.size());
+	std::iota(dsu.begin(), dsu.end(), 0);
 	auto find = [&](size_t x) -> size_t {
 		while (dsu[dsu[x]] != dsu[x]) {
 			dsu[x] = dsu[dsu[x]];
 		}
 		return dsu[x];
 	};
-	auto merge = [&](size_t to, size_t from) { dsu[find(from)] = find(to); };
-	auto picked = std::vector<size_t>();
-	picked.reserve(n - 1);
-	for (size_t i = 0; i != m; ++i) {
-		auto &u = std::get<1>(sorted_edges[i]),
-			 &v = std::get<2>(sorted_edges[i]),
-			 &index = std::get<3>(sorted_edges[i]);
-		if (find(u) != find(v)) {
-			picked.push_back(index);
-			merge(u, v);
-		}
-	}
-	return picked;
-}
+	auto merge = [&](size_t to, size_t frm) { dsu[find(frm)] = find(to); };
 
-inline std::vector<size_t>
-prim(size_t n,
-	 const std::vector<std::tuple<size_t, size_t, int32_t>> &edges // {from, to, weight}
-) {
-	if (!n) {
-		return {};
-	}
-	using Adj = std::tuple<int32_t, size_t, size_t>; // {weight, to, index}
-	auto adj = std::vector<std::vector<Adj>>(n);
-	for (size_t i = 0; i != edges.size(); ++i) {
-		auto &w = std::get<2>(edges[i]);
-		auto &u = std::get<0>(edges[i]), &v = std::get<1>(edges[i]);
-		adj[u].emplace_back(w, v, i);
-	}
-	std::priority_queue<Adj, std::vector<Adj>, std::greater<Adj>> pq;
-	auto vis = std::vector<bool>(n);
-	auto dist = std::vector<int32_t>(n, INT32_MAX);
-	vis[0] = true;
-	dist[0] = 0;
-	for (auto &e : adj[0]) {
-		auto &w = std::get<0>(e);
-		auto &v = std::get<1>(e), index = std::get<2>(e);
-		if (dist[v] > w) {
-			pq.emplace(dist[v] = w, v, index);
+	std::vector<size_t> msf_edges;
+	msf_edges.reserve(m_adj.size() - 1);
+	for (auto i : sorted) {
+		if (find(m_edges[i].u) != find(m_edges[i].v)) {
+			msf_edges.emplace_back(i);
+			merge(m_edges[i].u, m_edges[i].v);
 		}
 	}
-	std::vector<size_t> res;
-	res.reserve(n - 1);
-	while (pq.size() && res.size() != n - 1) {
-		auto u = std::get<1>(pq.top()), index = std::get<2>(pq.top());
-		pq.pop();
-		if (vis[u]) {
-			continue;
-		}
-		vis[u] = true;
-		res.emplace_back(index);
-		for (auto &e : adj[u]) {
-			auto &w = std::get<0>(e);
-			auto &v = std::get<1>(e), &index = std::get<2>(e);
-			if (dist[v] > w && !vis[v]) {
-				pq.emplace(dist[v] = w, v, index);
-			}
-		}
+
+	// Classify edges into connected components
+	std::unordered_map<size_t, std::vector<size_t>> components;
+	for (auto i : msf_edges) {
+		components[find(m_edges[i].u)].emplace_back(i);
+	}
+	std::vector<std::vector<size_t>> res;
+	res.reserve(components.size());
+	for (auto &pr : components) {
+		res.emplace_back(std::move(pr.second));
 	}
 	return res;
+}
+
+template <typename Weight, bool is_directed>
+inline std::vector<size_t> Graph<Weight, is_directed>::prim(size_t rt) const {
+	static_assert(!is_directed,
+				  "Prim algorithm is only applicable to undirected graphs.");
+	if (m_adj.size() < 2) {
+		return {};
+	}
+
+	std::vector<size_t> mst_edges;
+	mst_edges.reserve(m_adj.size() - 1);
+	auto cmp = [&](size_t lhs, size_t rhs) {
+		return (m_edges[lhs].w > m_edges[rhs].w);
+	};
+	std::priority_queue<size_t, std::vector<size_t>, decltype(cmp)> pq(cmp);
+	std::vector<bool> vis(m_adj.size());
+
+	auto visit = [&](size_t frm) -> void {
+		vis[frm] = true;
+		for (auto i : m_adj[frm]) {
+			const auto &edge = m_edges[i];
+			if (!vis[(edge.u == frm ? edge.v : edge.u)]) {
+				pq.push(i);
+			}
+		}
+	};
+
+	visit(rt);
+	while (pq.size() && mst_edges.size() + 1 < m_adj.size()) {
+		size_t i = pq.top();
+		pq.pop();
+		size_t u = m_edges[i].u, v = m_edges[i].v;
+		if (vis[u] && vis[v]) {
+			continue;
+		}
+		mst_edges.emplace_back(i);
+		visit(vis[u] ? v : u);
+	}
+
+	return mst_edges;
 }
 
 template <typename Weight>
