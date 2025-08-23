@@ -1384,49 +1384,7 @@ public:
 	const std::vector<std::vector<size_t>> &adj() const { return m_adj; }
 
 	/* Algorithms */
-	std::vector<std::vector<size_t>> tarjanSccs() const {
-		static_assert(is_directed,
-					  "Tarjan's algorithm for strongly connected components "
-					  "is only applicable to directed graphs.");
-		std::vector<size_t> stk;
-		stk.reserve(m_adj.size());
-		std::vector<bool> in_stk(m_adj.size());
-		std::vector<size_t> dfn(m_adj.size(), size_t(-1)), low(m_adj.size());
-		std::vector<std::vector<size_t>> sccs;
-		size_t tm = 0;
-		std::function<void(size_t)> dfs = [&](size_t cur) -> void {
-			stk.emplace_back(cur);
-			in_stk[cur] = true;
-			low[cur] = (dfn[cur] = (tm++));
-			for (auto i : m_adj[cur]) {
-				auto &edge = m_edges[i];
-				if (edge.u != cur) { // edges pointing to cur
-					continue;
-				}
-				if (dfn[edge.v] == size_t(-1)) {
-					dfs(edge.v);
-					minEq(low[cur], low[edge.v]);
-				} else if (in_stk[edge.v]) {
-					minEq(low[cur], dfn[edge.v]);
-				}
-			}
-			if (dfn[cur] == low[cur]) {
-				sccs.emplace_back();
-				size_t vert;
-				do {
-					sccs.back().emplace_back(vert = stk.back());
-					stk.pop_back();
-					in_stk[vert] = false;
-				} while (vert != cur);
-			}
-		};
-		for (size_t i = 0; i != m_adj.size(); ++i) {
-			if (dfn[i] == size_t(-1)) {
-				dfs(i);
-			}
-		}
-		return sccs;
-	}
+	std::vector<std::vector<size_t>> tarjanSccs() const;
 	/**
 	 * @return {{cut_verts, vbccs}, {bridges, ebccs}}
 	 */
@@ -1434,98 +1392,9 @@ public:
 							   std::vector<std::vector<size_t>>>,
 					 std::pair<std::vector<std::vector<size_t>>,
 							   std::vector<std::vector<size_t>>>>
-	tarjanCutAndBccs() const {
-		static_assert(!is_directed,
-					  "Tarjan's algorithm for cut vertices, bridges "
-					  "and biconnected components is only applicable to "
-					  "undirected graphs.");
-		std::vector<std::vector<size_t>> cut_verts, vbccs, bridges, ebccs;
-		std::vector<size_t> vbcc_stk, ebcc_stk;
-		std::vector<size_t> dfn(m_adj.size(), size_t(-1)), low(m_adj.size());
-		size_t tm = 0;
-		std::function<void(size_t, size_t)> dfs = [&](size_t pre, size_t cur) {
-			low[cur] = (dfn[cur] = (tm++));
-			vbcc_stk.emplace_back(cur);
-			ebcc_stk.emplace_back(cur);
-			size_t children = 0;
-			bool not_in_cut = true, has_edge_to_pre = false;
-			for (auto i : m_adj[cur]) {
-				size_t nxt = ((m_edges[i].u == cur)
-								  ? m_edges[i].v
-								  : m_edges[i].u);
-				if (dfn[nxt] == size_t(-1)) {
-					++children;
-					dfs(cur, nxt);
-					minEq(low[cur], low[nxt]);
-					if (~pre ? (low[nxt] >= dfn[cur]) : (children > 1)) {
-						if (not_in_cut) {
-							not_in_cut = false;
-							cut_verts.back().emplace_back(cur);
-						}
-						vbccs.emplace_back(1, cur);
-						size_t vert;
-						do {
-							vbccs.back().push_back(vert = vbcc_stk.back());
-							vbcc_stk.pop_back();
-						} while (vert != nxt);
-					}
-					if (low[nxt] > dfn[cur]) {
-						bridges.back().emplace_back(i);
-						ebccs.emplace_back();
-						size_t vert;
-						do {
-							ebccs.back().emplace_back(vert = ebcc_stk.back());
-							ebcc_stk.pop_back();
-						} while (vert != nxt);
-					}
-				} else if (nxt != pre || has_edge_to_pre) {
-					minEq(low[cur], dfn[nxt]);
-				} else {
-					has_edge_to_pre = true;
-				}
-			}
-		};
-		for (size_t i = 0; i != m_adj.size(); ++i) {
-			if (dfn[i] == size_t(-1)) {
-				cut_verts.emplace_back();
-				bridges.emplace_back();
-				dfs(-1, i);
-				if (vbcc_stk.size()) {
-					vbccs.emplace_back(std::move(vbcc_stk));
-				}
-				if (ebcc_stk.size()) {
-					ebccs.emplace_back(std::move(ebcc_stk));
-				}
-			}
-		}
-		return {{cut_verts, vbccs}, {bridges, ebccs}};
-	}
+	tarjanCutAndBccs() const;
 
-	std::vector<size_t> toposort() const {
-		static_assert(is_directed,
-					  "Topological sorting is only applicable to directed graphs.");
-		std::vector<size_t> indeg(m_adj.size());
-		for (auto &edge : m_edges) {
-			++indeg[edge.v];
-		}
-		std::vector<size_t> res, zero_indeg_verts;
-		for (size_t i = 0; i != m_adj.size(); ++i) {
-			if (!indeg[i]) {
-				zero_indeg_verts.emplace_back(i);
-			}
-		}
-		while (zero_indeg_verts.size()) {
-			size_t frm = zero_indeg_verts.back();
-			zero_indeg_verts.pop_back();
-			res.emplace_back(frm);
-			for (auto i : m_adj[frm]) {
-				if (!(--indeg[m_edges[i].v])) {
-					zero_indeg_verts.emplace_back(m_edges[i].v);
-				}
-			}
-		}
-		return ((res.size() == m_adj.size()) ? res : std::vector<size_t>());
-	}
+	std::vector<size_t> toposort() const;
 
 protected:
 	std::vector<Edge> m_edges;
@@ -1545,6 +1414,151 @@ protected:
 
 private:
 };
+
+template <typename Weight, bool is_directed>
+std::vector<std::vector<size_t>>
+Graph<Weight, is_directed>::tarjanSccs() const {
+	static_assert(is_directed,
+				  "Tarjan's algorithm for strongly connected components "
+				  "is only applicable to directed graphs.");
+	std::vector<size_t> stk;
+	stk.reserve(m_adj.size());
+	std::vector<bool> in_stk(m_adj.size());
+	std::vector<size_t> dfn(m_adj.size(), size_t(-1)), low(m_adj.size());
+	std::vector<std::vector<size_t>> sccs;
+	size_t tm = 0;
+	std::function<void(size_t)> dfs = [&](size_t cur) -> void {
+		stk.emplace_back(cur);
+		in_stk[cur] = true;
+		low[cur] = (dfn[cur] = (tm++));
+		for (auto i : m_adj[cur]) {
+			auto &edge = m_edges[i];
+			if (edge.u != cur) { // edges pointing to cur
+				continue;
+			}
+			if (dfn[edge.v] == size_t(-1)) {
+				dfs(edge.v);
+				minEq(low[cur], low[edge.v]);
+			} else if (in_stk[edge.v]) {
+				minEq(low[cur], dfn[edge.v]);
+			}
+		}
+		if (dfn[cur] == low[cur]) {
+			sccs.emplace_back();
+			size_t vert;
+			do {
+				sccs.back().emplace_back(vert = stk.back());
+				stk.pop_back();
+				in_stk[vert] = false;
+			} while (vert != cur);
+		}
+	};
+	for (size_t i = 0; i != m_adj.size(); ++i) {
+		if (dfn[i] == size_t(-1)) {
+			dfs(i);
+		}
+	}
+	return sccs;
+}
+/**
+ * @return {{cut_verts, vbccs}, {bridges, ebccs}}
+ */
+template <typename Weight, bool is_directed>
+inline std::pair<std::pair<std::vector<std::vector<size_t>>,
+						   std::vector<std::vector<size_t>>>,
+				 std::pair<std::vector<std::vector<size_t>>,
+						   std::vector<std::vector<size_t>>>>
+Graph<Weight, is_directed>::tarjanCutAndBccs() const {
+	static_assert(!is_directed,
+				  "Tarjan's algorithm for cut vertices, bridges "
+				  "and biconnected components is only applicable to "
+				  "undirected graphs.");
+	std::vector<std::vector<size_t>> cut_verts, vbccs, bridges, ebccs;
+	std::vector<size_t> vbcc_stk, ebcc_stk;
+	std::vector<size_t> dfn(m_adj.size(), size_t(-1)), low(m_adj.size());
+	size_t tm = 0;
+	std::function<void(size_t, size_t)> dfs = [&](size_t pre, size_t cur) {
+		low[cur] = (dfn[cur] = (tm++));
+		vbcc_stk.emplace_back(cur);
+		ebcc_stk.emplace_back(cur);
+		size_t children = 0;
+		bool not_in_cut = true, has_edge_to_pre = false;
+		for (auto i : m_adj[cur]) {
+			size_t nxt = ((m_edges[i].u == cur) ? m_edges[i].v : m_edges[i].u);
+			if (dfn[nxt] == size_t(-1)) {
+				++children;
+				dfs(cur, nxt);
+				minEq(low[cur], low[nxt]);
+				if (~pre ? (low[nxt] >= dfn[cur]) : (children > 1)) {
+					if (not_in_cut) {
+						not_in_cut = false;
+						cut_verts.back().emplace_back(cur);
+					}
+					vbccs.emplace_back(1, cur);
+					size_t vert;
+					do {
+						vbccs.back().push_back(vert = vbcc_stk.back());
+						vbcc_stk.pop_back();
+					} while (vert != nxt);
+				}
+				if (low[nxt] > dfn[cur]) {
+					bridges.back().emplace_back(i);
+					ebccs.emplace_back();
+					size_t vert;
+					do {
+						ebccs.back().emplace_back(vert = ebcc_stk.back());
+						ebcc_stk.pop_back();
+					} while (vert != nxt);
+				}
+			} else if (nxt != pre || has_edge_to_pre) {
+				minEq(low[cur], dfn[nxt]);
+			} else {
+				has_edge_to_pre = true;
+			}
+		}
+	};
+	for (size_t i = 0; i != m_adj.size(); ++i) {
+		if (dfn[i] == size_t(-1)) {
+			cut_verts.emplace_back();
+			bridges.emplace_back();
+			dfs(-1, i);
+			if (vbcc_stk.size()) {
+				vbccs.emplace_back(std::move(vbcc_stk));
+			}
+			if (ebcc_stk.size()) {
+				ebccs.emplace_back(std::move(ebcc_stk));
+			}
+		}
+	}
+	return {{cut_verts, vbccs}, {bridges, ebccs}};
+}
+
+template <typename Weight, bool is_directed>
+inline std::vector<size_t> Graph<Weight, is_directed>::toposort() const {
+	static_assert(is_directed,
+				  "Topological sorting is only applicable to directed graphs.");
+	std::vector<size_t> indeg(m_adj.size());
+	for (auto &edge : m_edges) {
+		++indeg[edge.v];
+	}
+	std::vector<size_t> res, zero_indeg_verts;
+	for (size_t i = 0; i != m_adj.size(); ++i) {
+		if (!indeg[i]) {
+			zero_indeg_verts.emplace_back(i);
+		}
+	}
+	while (zero_indeg_verts.size()) {
+		size_t frm = zero_indeg_verts.back();
+		zero_indeg_verts.pop_back();
+		res.emplace_back(frm);
+		for (auto i : m_adj[frm]) {
+			if (!(--indeg[m_edges[i].v])) {
+				zero_indeg_verts.emplace_back(m_edges[i].v);
+			}
+		}
+	}
+	return ((res.size() == m_adj.size()) ? res : std::vector<size_t>());
+}
 
 template <typename Weight>
 inline std::vector<size_t>
