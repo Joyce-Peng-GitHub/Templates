@@ -1654,64 +1654,6 @@ inline std::vector<size_t> Graph<Weight, is_directed>::prim(size_t rt) const {
 	return mst_edges;
 }
 
-template <typename Weight>
-inline std::vector<std::vector<Weight>>
-floyd(std::vector<std::vector<Weight>> weights) {
-	size_t n = weights.size();
-	if (!n) {
-		return {};
-	}
-	assert(n == weights[0].size());
-	for (size_t i = 0, j, k; i != n; ++i) {
-		for (j = 0; j != n; ++j) {
-			for (k = 0; k != n; ++k) {
-				if (weights[j][i] != std::numeric_limits<Weight>::max() &&
-					weights[i][k] != std::numeric_limits<Weight>::max()) {
-					weights[j][k] = std::min(weights[j][k], weights[j][i] + weights[i][k]);
-				}
-			}
-		}
-	}
-	return weights;
-}
-
-template <typename Weight>
-inline std::vector<std::vector<Weight>>
-floydMatMul(std::vector<std::vector<Weight>> weights) {
-	size_t n = weights.size();
-	if (!n) {
-		return {};
-	}
-	assert(n == weights[0].size());
-	using Mat = std::vector<std::vector<Weight>>;
-	auto matMul = [](const Mat &lhs, const Mat &rhs) -> Mat {
-		auto &&n = lhs.size();
-		auto res = Mat(n, std::vector<Weight>(n, std::numeric_limits<Weight>::max()));
-		for (size_t i = 0, j, k; i != n; ++i) {
-			for (j = 0; j != n; ++j) {
-				for (k = 0; k != n; ++k) {
-					if (lhs[i][k] != std::numeric_limits<Weight>::max() &&
-						rhs[k][j] != std::numeric_limits<Weight>::max()) {
-						res[i][j] = std::min(res[i][j], lhs[i][k] + rhs[k][j]);
-					}
-				}
-			}
-		}
-		return res;
-	};
-	auto res = Mat(n, std::vector<int32_t>(n, std::numeric_limits<Weight>::max()));
-	for (size_t i = 0; i != n; ++i) {
-		res[i][i] = 0;
-	}
-	for (; n; n >>= 1) {
-		if (n & 1) {
-			res = matMul(res, weights);
-		}
-		weights = matMul(weights, weights);
-	}
-	return res;
-}
-
 template <typename Weight, bool is_directed>
 inline std::vector<Weight> Graph<Weight, is_directed>::dijkstra(size_t src) const {
 	using Adj = std::pair<Weight, size_t>; // (dist, vertex)
@@ -1807,6 +1749,64 @@ Graph<Weight, is_directed>::spfa(size_t src) const {
 		}
 	}
 	return dist;
+}
+
+template <typename Weight>
+inline std::vector<std::vector<Weight>>
+floyd(std::vector<std::vector<Weight>> weights) {
+	size_t n = weights.size();
+	if (!n) {
+		return {};
+	}
+	assert(n == weights[0].size());
+	for (size_t i = 0, j, k; i != n; ++i) {
+		for (j = 0; j != n; ++j) {
+			for (k = 0; k != n; ++k) {
+				if (weights[j][i] != std::numeric_limits<Weight>::max() &&
+					weights[i][k] != std::numeric_limits<Weight>::max()) {
+					weights[j][k] = std::min(weights[j][k], weights[j][i] + weights[i][k]);
+				}
+			}
+		}
+	}
+	return weights;
+}
+
+template <typename Weight>
+inline std::vector<std::vector<Weight>>
+floydMatMul(std::vector<std::vector<Weight>> weights) {
+	size_t n = weights.size();
+	if (!n) {
+		return {};
+	}
+	assert(n == weights[0].size());
+	using Mat = std::vector<std::vector<Weight>>;
+	auto matMul = [](const Mat &lhs, const Mat &rhs) -> Mat {
+		auto &&n = lhs.size();
+		auto res = Mat(n, std::vector<Weight>(n, std::numeric_limits<Weight>::max()));
+		for (size_t i = 0, j, k; i != n; ++i) {
+			for (j = 0; j != n; ++j) {
+				for (k = 0; k != n; ++k) {
+					if (lhs[i][k] != std::numeric_limits<Weight>::max() &&
+						rhs[k][j] != std::numeric_limits<Weight>::max()) {
+						res[i][j] = std::min(res[i][j], lhs[i][k] + rhs[k][j]);
+					}
+				}
+			}
+		}
+		return res;
+	};
+	auto res = Mat(n, std::vector<int32_t>(n, std::numeric_limits<Weight>::max()));
+	for (size_t i = 0; i != n; ++i) {
+		res[i][i] = 0;
+	}
+	for (; n; n >>= 1) {
+		if (n & 1) {
+			res = matMul(res, weights);
+		}
+		weights = matMul(weights, weights);
+	}
+	return res;
 }
 
 /**
