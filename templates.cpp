@@ -887,7 +887,9 @@ private:
 /**
  * @return sorted unique elements
  */
-template <typename Iter, typename Cmp = std::less<>, typename Eq = std::equal_to<>>
+template <typename Iter,
+		  typename Cmp = std::less<typename std::iterator_traits<Iter>::value_type>,
+		  typename Eq = std::equal_to<typename std::iterator_traits<Iter>::value_type>>
 inline std::vector<typename std::iterator_traits<Iter>::value_type>
 discretize(Iter begin, Iter end, std::vector<size_t> &res,
 		   Cmp cmp = Cmp(), Eq eq = Eq()) {
