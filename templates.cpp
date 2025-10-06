@@ -429,7 +429,577 @@ protected:
 private:
 };
 
-template <typename T, typename Cmp = std::less<T>, typename Dq = std::deque<T>>
+template <typename T>
+class Deque {
+public:
+	using value_type = T;
+	using size_type = std::size_t;
+	using difference_type = std::ptrdiff_t;
+	using reference = T &;
+	using const_reference = const T &;
+	using pointer = T *;
+	using const_pointer = const T *;
+
+protected:
+	template <bool IsConst>
+	class IterBase {
+	public:
+		// C++ standard iterator traits
+		using iterator_category = std::random_access_iterator_tag;
+		using value_type = T;
+		using difference_type = std::ptrdiff_t;
+
+		// Use std::conditional to select const or non-const types
+		using DequeType = typename std::conditional<IsConst, const Deque, Deque>::type;
+		using pointer = typename std::conditional<IsConst, const T *, T *>::type;
+		using reference = typename std::conditional<IsConst, const T &, T &>::type;
+
+	protected:
+		DequeType *m_dq = nullptr;
+		size_type m_idx = 0; // Logical idx from the start of the deque
+
+		// Friend declaration to allow Deque to access private members.
+		friend class Deque<T>;
+
+	public:
+		IterBase() = default;
+		IterBase(DequeType *dq, size_type idx) : m_dq(dq), m_idx(idx) {}
+
+		// Allows implicit conversion from iterator to const_iterator
+		operator IterBase<true>() const {
+			return IterBase<true>(m_dq, m_idx);
+		}
+
+		// Dereference operators
+		reference operator*() const { return (*m_dq)[m_idx]; }
+		pointer operator->() const { return &((*m_dq)[m_idx]); }
+		reference operator[](difference_type offset) const {
+			return (*m_dq)[m_idx + offset];
+		}
+
+		// Increment and decrement operators
+		IterBase &operator++() {
+			++m_idx;
+			return *this;
+		}
+		IterBase operator++(int) {
+			IterBase tmp = *this;
+			++m_idx;
+			return tmp;
+		}
+		IterBase &operator--() {
+			--m_idx;
+			return *this;
+		}
+		IterBase operator--(int) {
+			IterBase tmp = *this;
+			--m_idx;
+			return tmp;
+		}
+
+		// Arithmetic operators
+		IterBase &operator+=(difference_type offset) {
+			m_idx += offset;
+			return *this;
+		}
+		IterBase operator+(difference_type offset) const {
+			return IterBase(m_dq, m_idx + offset);
+		}
+		friend IterBase operator+(difference_type offset, const IterBase &it) {
+			return (it + offset);
+		}
+		IterBase &operator-=(difference_type offset) {
+			m_idx -= offset;
+			return *this;
+		}
+		IterBase operator-(difference_type offset) const {
+			return IterBase(m_dq, m_idx - offset);
+		}
+		difference_type operator-(const IterBase &other) const {
+			return (static_cast<difference_type>(m_idx) -
+					static_cast<difference_type>(other.m_idx));
+		}
+
+		// Comparison operators
+		bool operator==(const IterBase &other) const {
+			return (m_dq == other.m_dq && m_idx == other.m_idx);
+		}
+		bool operator!=(const IterBase &other) const {
+			return !(*this == other);
+		}
+		bool operator<(const IterBase &other) const {
+			return (m_idx < other.m_idx);
+		}
+
+		bool operator>(const IterBase &other) const {
+			return (m_idx > other.m_idx);
+		}
+		bool operator<=(const IterBase &other) const {
+			return (m_idx <= other.m_idx);
+		}
+		bool operator>=(const IterBase &other) const {
+			return (m_idx >= other.m_idx);
+		}
+	};
+
+public:
+	// Standard container typedefs
+	using iterator = IterBase<false>;
+	using const_iterator = IterBase<true>;
+	using reverse_iterator = std::reverse_iterator<iterator>;
+	using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+
+	// Constructors, Destructor, and Assignment
+	Deque() noexcept : m_data(nullptr), m_head(0), m_sz(0), m_cap(0) {}
+	explicit Deque(size_type cnt)
+		: m_data(nullptr), m_head(0), m_sz(0), m_cap(0) {
+		if (cnt > 0) {
+			m_initElems(cnt);
+			for (size_type i = 0; i < cnt; ++i) {
+				new (m_data + i) T();
+			}
+			m_sz = cnt;
+		}
+	}
+	Deque(size_type cnt, const T &val)
+		: m_data(nullptr), m_head(0), m_sz(0), m_cap(0) {
+		m_initElems(cnt);
+		for (size_type i = 0; i < cnt; ++i) {
+			new (m_data + i) T(val);
+		}
+		m_sz = cnt;
+	}
+	template <class InputIt, typename = typename std::iterator_traits<InputIt>::iterator_category>
+	Deque(InputIt first, InputIt last) : Deque() {
+		assign(first, last);
+	}
+	Deque(const Deque &other) : Deque() {
+		if (other.empty()) return;
+		m_initElems(other.m_sz);
+		for (size_type i = 0; i < other.m_sz; ++i) {
+			new (m_data + i) T(other[i]);
+		}
+		m_sz = other.m_sz;
+	}
+	Deque(Deque &&other) noexcept
+		: m_data(other.m_data), m_head(other.m_head),
+		  m_sz(other.m_sz), m_cap(other.m_cap) {
+		other.m_data = nullptr;
+		other.m_head = 0;
+		other.m_sz = 0;
+		other.m_cap = 0;
+	}
+	Deque(std::initializer_list<T> ilist) : Deque(ilist.begin(), ilist.end()) {}
+
+	~Deque() {
+		m_destroyAllElems();
+		::operator delete(m_data);
+	}
+
+	Deque &operator=(const Deque &other) {
+		if (this != &other) {
+			Deque tmp(other);
+			swap(tmp);
+		}
+		return *this;
+	}
+
+	Deque &operator=(Deque &&other) noexcept {
+		if (this != &other) {
+			m_destroyAllElems();
+			::operator delete(m_data);
+
+			m_data = other.m_data;
+			m_head = other.m_head;
+			m_sz = other.m_sz;
+			m_cap = other.m_cap;
+
+			other.m_data = nullptr;
+			other.m_head = 0;
+			other.m_sz = 0;
+			other.m_cap = 0;
+		}
+		return *this;
+	}
+
+	Deque &operator=(std::initializer_list<T> ilist) {
+		assign(ilist.begin(), ilist.end());
+		return *this;
+	}
+
+	void assign(size_type cnt, const T &val) {
+		clear();
+		if (cnt > m_cap) m_reallocate(cnt);
+		for (size_type i = 0; i < cnt; ++i) {
+			new (m_data + i) T(val);
+		}
+		m_sz = cnt;
+		m_head = 0;
+	}
+
+	template <class InputIt, typename = typename std::iterator_traits<InputIt>::iterator_category>
+	void assign(InputIt first, InputIt last) {
+		clear();
+		for (; first != last; ++first) {
+			pushBack(*first);
+		}
+	}
+
+	// Element Access
+
+	reference at(size_type pos) {
+		m_rangeCheck(pos);
+		return (*this)[pos];
+	}
+	const_reference at(size_type pos) const {
+		m_rangeCheck(pos);
+		return (*this)[pos];
+	}
+	reference operator[](size_type pos) {
+		return m_data[(m_head + pos) % m_cap];
+	}
+	const_reference operator[](size_type pos) const {
+		return m_data[(m_head + pos) % m_cap];
+	}
+
+	reference front() { return m_data[m_head]; }
+	const_reference front() const { return m_data[m_head]; }
+
+	reference back() { return m_data[(m_head + m_sz - 1) % m_cap]; }
+	const_reference back() const { return m_data[(m_head + m_sz - 1) % m_cap]; }
+
+	// Iterators
+
+	iterator begin() noexcept { return iterator(this, 0); }
+	const_iterator begin() const noexcept { return const_iterator(this, 0); }
+	const_iterator cbegin() const noexcept { return const_iterator(this, 0); }
+
+	iterator end() noexcept { return iterator(this, m_sz); }
+	const_iterator end() const noexcept { return const_iterator(this, m_sz); }
+	const_iterator cend() const noexcept { return const_iterator(this, m_sz); }
+
+	reverse_iterator rbegin() noexcept { return reverse_iterator(end()); }
+	const_reverse_iterator rbegin() const noexcept {
+		return const_reverse_iterator(end());
+	}
+	const_reverse_iterator crbegin() const noexcept {
+		return const_reverse_iterator(cend());
+	}
+
+	reverse_iterator rend() noexcept {
+		return reverse_iterator(begin());
+	}
+	const_reverse_iterator rend() const noexcept {
+		return const_reverse_iterator(begin());
+	}
+	const_reverse_iterator crend() const noexcept {
+		return const_reverse_iterator(cbegin());
+	}
+
+	// Capacity
+	bool empty() const noexcept { return !m_sz; }
+	size_type size() const noexcept { return m_sz; }
+	size_type capacity() const noexcept { return m_cap; }
+	void shrinkToFit() {
+		if (m_sz < m_cap) m_reallocate(m_sz);
+	}
+
+	// Modifiers
+	void clear() noexcept {
+		m_destroyAllElems();
+		m_head = 0;
+		m_sz = 0;
+	}
+
+	iterator insert(const_iterator pos, const T &val) {
+		return emplace(pos, val);
+	}
+	iterator insert(const_iterator pos, T &&val) {
+		return emplace(pos, std::move(val));
+	}
+	iterator insert(const_iterator pos, size_type cnt, const T &val) {
+		const difference_type idx = pos - cbegin();
+		if (!cnt) return (begin() + idx);
+		if (m_sz + cnt > m_cap) {
+			const size_type new_cap = std::max(m_cap * 2, m_sz + cnt);
+			m_reallocateAndInsert(new_cap, idx, cnt);
+		} else {
+			const size_type elems_after = m_sz - idx;
+			// Shift the smaller part of the deque
+			if (idx < elems_after) {
+				// Shift front part backward
+				const size_type old_head = m_head;
+				m_head = ((m_head >= cnt) ? (m_head - cnt) : (m_cap - (cnt - m_head)));
+				for (size_type i = 0; i < idx; ++i) {
+					(*this)[i] = std::move_if_noexcept(m_data[(old_head + i) % m_cap]);
+				}
+			} else {
+				// Shift back part forward
+				for (size_type i = m_sz - 1; i >= idx; --i) {
+					(*this)[i + cnt] = std::move_if_noexcept((*this)[i]);
+				}
+			}
+		}
+		for (size_type i = 0; i < cnt; ++i) {
+			m_data[(m_head + idx + i) % m_cap] = val;
+		}
+		m_sz += cnt;
+		return (begin() + idx);
+	}
+	template <class InputIt, typename = typename std::iterator_traits<InputIt>::iterator_category>
+	iterator insert(const_iterator pos, InputIt first, InputIt last) {
+		const difference_type idx = pos - cbegin();
+		Deque tmp(first, last); // Easiest way to handle all iterator types
+		const size_type cnt = tmp.size();
+		if (cnt == 0) return (begin() + idx);
+		if (m_sz + cnt > m_cap) {
+			m_reallocateAndInsert(std::max(m_cap * 2, m_sz + cnt), idx, cnt);
+		} else {
+			const size_type elems_after = m_sz - idx;
+			if (idx < elems_after) {
+				const size_type old_head = m_head;
+				m_head = (m_head >= cnt) ? m_head - cnt : m_cap - (cnt - m_head);
+				for (size_type i = 0; i < idx; ++i)
+					(*this)[i] = std::move_if_noexcept(m_data[(old_head + i) % m_cap]);
+			} else {
+				for (size_type i = m_sz - 1; i >= idx; --i)
+					(*this)[i + cnt] = std::move_if_noexcept((*this)[i]);
+			}
+		}
+		for (size_type i = 0; i < cnt; ++i) {
+			(*this)[idx + i] = std::move_if_noexcept(tmp[i]);
+		}
+		m_sz += cnt;
+		return (begin() + idx);
+	}
+	template <class... Args>
+	iterator emplace(const_iterator pos, Args &&...args) {
+		const difference_type idx = pos - cbegin();
+		// If inserting at front or back, delegate to existing efficient functions
+		if (idx == 0) {
+			emplaceFront(std::forward<Args>(args)...);
+			return begin();
+		}
+		if (static_cast<size_type>(idx) == m_sz) {
+			emplaceBack(std::forward<Args>(args)...);
+			return (end() - 1);
+		}
+		m_expandIfFull();
+		// To insert in the middle, it's cheaper to move the smaller half.
+		if (idx < m_sz / 2) {
+			// Shift elements [0...idx-1] one step to the left
+			pushFront(std::move(front()));
+			for (size_type i = 1; i < idx; ++i) {
+				(*this)[i] = std::move((*this)[i + 1]);
+			}
+		} else {
+			// Shift elements [idx...size-1] one step to the right
+			pushBack(std::move(back()));
+			for (size_type i = m_sz - 2; i > idx; --i) {
+				(*this)[i] = std::move((*this)[i - 1]);
+			}
+		}
+		(*this)[idx] = T(std::forward<Args>(args)...);
+		return (begin() + idx);
+	}
+
+	iterator erase(const_iterator pos) { return erase(pos, pos + 1); }
+	iterator erase(const_iterator first, const_iterator last) {
+		const difference_type idx_first = first - cbegin();
+		const difference_type idx_last = last - cbegin();
+		const difference_type cnt = idx_last - idx_first;
+		if (cnt <= 0) return (begin() + idx_first);
+		// Decide which part of the deque to shift
+		if (idx_first < (m_sz - idx_last)) {
+			// The front part is smaller, so move [0..idx_first-1] to the right
+			std::move_backward(begin(), begin() + idx_first, begin() + idx_last);
+			for (size_type i = 0; i < cnt; ++i) {
+				popFront();
+			}
+		} else {
+			// The back part is smaller, so move [idx_last..end] to the left
+			std::move(begin() + idx_last, end(), begin() + idx_first);
+			for (size_type i = 0; i < cnt; ++i) {
+				popBack();
+			}
+		}
+		return (begin() + idx_first);
+	}
+
+	template <class... Args>
+	void emplaceFront(Args &&...args) {
+		m_expandIfFull();
+		m_head = (m_head == 0) ? m_cap - 1 : m_head - 1;
+		new (m_data + m_head) T(std::forward<Args>(args)...);
+		++m_sz;
+	}
+	void pushFront(const T &val) {
+		emplaceFront(val);
+	}
+	void pushFront(T &&val) {
+		emplaceFront(std::move(val));
+	}
+	void popFront() {
+		m_data[m_head].~T();
+		m_head = (m_head + 1) % m_cap;
+		--m_sz;
+	}
+
+	template <class... Args>
+	void emplaceBack(Args &&...args) {
+		m_expandIfFull();
+		size_type tail_pos = (m_head + m_sz) % m_cap;
+		new (m_data + tail_pos) T(std::forward<Args>(args)...);
+		++m_sz;
+	}
+	void pushBack(const T &val) {
+		emplaceBack(val);
+	}
+	void pushBack(T &&val) {
+		emplaceBack(std::move(val));
+	}
+	void popBack() {
+		size_type last_pos = (m_head + m_sz - 1) % m_cap;
+		m_data[last_pos].~T();
+		--m_sz;
+	}
+
+	void resize(size_type cnt) {
+		if (cnt < m_sz) {
+			for (size_type i = cnt; i < m_sz; ++i) {
+				(*this)[i].~T();
+			}
+		} else if (cnt > m_sz) {
+			if (cnt > m_cap) {
+				m_reallocate(cnt);
+			}
+			size_type old_size = m_sz;
+			for (size_type i = old_size; i < cnt; ++i) {
+				emplaceBack();
+			}
+		}
+		m_sz = cnt;
+	}
+
+	void resize(size_type cnt, const value_type &val) {
+		if (cnt < m_sz) {
+			for (size_type i = cnt; i < m_sz; ++i) {
+				(*this)[i].~T();
+			}
+		} else if (cnt > m_sz) {
+			if (cnt > m_cap) {
+				m_reallocate(cnt);
+			}
+			size_type old_size = m_sz;
+			for (size_type i = old_size; i < cnt; ++i) {
+				pushBack(val);
+			}
+		}
+		m_sz = cnt;
+	}
+
+	void swap(Deque &other) noexcept {
+		using std::swap;
+		swap(m_data, other.m_data);
+		swap(m_head, other.m_head);
+		swap(m_sz, other.m_sz);
+		swap(m_cap, other.m_cap);
+	}
+
+private:
+	T *m_data;
+	size_type m_head;
+	size_type m_sz;
+	size_type m_cap;
+
+	static const size_type INITIAL_CAPACITY = 8;
+
+	void m_rangeCheck(size_type pos) const {
+		if (pos >= m_sz) {
+			throw std::out_of_range("Deque::m_rangeCheck: pos (which is " +
+									std::to_string(pos) +
+									") >= this->size() (which is " +
+									std::to_string(m_sz) + ")");
+		}
+	}
+
+	void m_reallocate(size_type new_cap) {
+		if (new_cap < m_sz) return;
+
+		T *new_data = static_cast<T *>(::operator new(new_cap * sizeof(T)));
+		size_type elems_moved = 0;
+		try {
+			for (size_type i = 0; i < m_sz; ++i) {
+				// Use move-if-noexcept for performance and exception safety
+				new (new_data + i) T(std::move_if_noexcept((*this)[i]));
+				elems_moved++;
+			}
+		} catch (...) {
+			for (size_type i = 0; i < elems_moved; ++i) {
+				(new_data + i)->~T();
+			}
+			::operator delete(new_data);
+			throw;
+		}
+
+		m_destroyAllElems();
+		::operator delete(m_data);
+
+		m_data = new_data;
+		m_head = 0;
+		m_cap = new_cap;
+	}
+	void m_reallocateAndInsert(size_type new_cap, size_type gap_idx, size_type gap_cnt) {
+		T *new_data = static_cast<T *>(::operator new(new_cap * sizeof(T)));
+		size_type elems_moved = 0;
+		try {
+			// Move elements before the gap
+			for (size_type i = 0; i < gap_idx; ++i) {
+				new (new_data + i) T(std::move_if_noexcept((*this)[i]));
+				elems_moved++;
+			}
+			// Move elements after the gap
+			for (size_type i = gap_idx; i < m_sz; ++i) {
+				new (new_data + i + gap_cnt) T(std::move_if_noexcept((*this)[i]));
+				elems_moved++;
+			}
+		} catch (...) {
+			// Exception safety
+			for (size_type i = 0; i < gap_idx; ++i)
+				(new_data + i)->~T();
+			for (size_type i = gap_idx; i < elems_moved; ++i)
+				(new_data + i + gap_cnt)->~T();
+			::operator delete(new_data);
+			throw;
+		}
+
+		m_destroyAllElems();
+		::operator delete(m_data);
+
+		m_data = new_data;
+		m_head = 0;
+		m_cap = new_cap;
+		// Size will be updated by the calling insert function
+	}
+
+	void m_expandIfFull() {
+		if (m_sz == m_cap) {
+			m_reallocate((m_cap > 0) ? m_cap * 2 : INITIAL_CAPACITY);
+		}
+	}
+	void m_destroyAllElems() noexcept {
+		for (size_type i = 0; i < m_sz; ++i) {
+			(*this)[i].~T();
+		}
+	}
+	void m_initElems(size_type cnt) {
+		m_cap = cnt;
+		m_data = static_cast<T *>(::operator new(m_cap * sizeof(T)));
+		m_head = 0;
+	}
+};
+
+template <typename T, typename Cmp = std::less<T>, typename Dq = Deque<T>>
 class MonoDeque {
 public:
 	inline MonoDeque(const Cmp &cmp = Cmp()) : m_cmp(cmp) {}
@@ -442,42 +1012,42 @@ public:
 
 	inline void pushFront(const T &val) {
 		popFrontFor(val);
-		m_dq.push_front(val);
+		m_dq.pushFront(val);
 	}
 	inline void pushFront(T &&val) {
 		popFrontFor(val);
-		m_dq.push_front(std::move(val));
+		m_dq.pushFront(std::move(val));
 	}
 	template <typename... Args>
 	inline void emplaceFront(Args &&...args) {
 		auto t = T(std::forward(args)...);
 		popFrontFor(t);
-		m_dq.push_front(std::move(t));
+		m_dq.pushFront(std::move(t));
 	}
 
 	inline void pushBack(const T &val) {
 		popBackFor(val);
-		m_dq.push_back(val);
+		m_dq.pushBack(val);
 	}
 	inline void pushBack(T &&val) {
 		popBackFor(val);
-		m_dq.push_back(std::move(val));
+		m_dq.pushBack(std::move(val));
 	}
 	template <typename... Args>
 	inline void emplaceBack(Args &&...args) {
 		auto t = T(std::forward<Args>(args)...);
 		popBackFor(t);
-		m_dq.push_back(std::move(t));
+		m_dq.pushBack(std::move(t));
 	}
 
-	inline void popFront() { m_dq.pop_front(); }
+	inline void popFront() { m_dq.popFront(); }
 	inline void popFrontFor(const T &val) {
 		while (m_dq.size() && !m_cmp(val, m_dq.front())) {
 			popFront();
 		}
 	}
 
-	inline void popBack() { m_dq.pop_back(); }
+	inline void popBack() { m_dq.popBack(); }
 	inline void popBackFor(const T &val) {
 		while (size() && !m_cmp(m_dq.back(), val)) {
 			popBack();
