@@ -569,8 +569,8 @@ public:
 		}
 		m_sz = cnt;
 	}
-	template <class InputIt, typename = typename std::iterator_traits<InputIt>::iterator_category>
-	Deque(InputIt first, InputIt last) : Deque() {
+	template <typename Iter, typename = RequireInputIter<Iter>>
+	Deque(Iter first, Iter last) : Deque() {
 		assign(first, last);
 	}
 	Deque(const Deque &other) : Deque() {
@@ -637,8 +637,8 @@ public:
 		m_head = 0;
 	}
 
-	template <class InputIt, typename = typename std::iterator_traits<InputIt>::iterator_category>
-	void assign(InputIt first, InputIt last) {
+	template <typename Iter, typename = RequireInputIter<Iter>>
+	void assign(Iter first, Iter last) {
 		clear();
 		for (; first != last; ++first) {
 			pushBack(*first);
@@ -746,8 +746,8 @@ public:
 		m_sz += cnt;
 		return (begin() + idx);
 	}
-	template <class InputIt, typename = typename std::iterator_traits<InputIt>::iterator_category>
-	iterator insert(const_iterator pos, InputIt first, InputIt last) {
+	template <typename Iter, typename = RequireInputIter<Iter>>
+	iterator insert(const_iterator pos, Iter first, Iter last) {
 		const difference_type idx = pos - cbegin();
 		Deque tmp(first, last); // Easiest way to handle all iterator types
 		const size_type cnt = tmp.size();
