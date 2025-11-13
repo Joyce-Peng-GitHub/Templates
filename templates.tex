@@ -47,6 +47,24 @@
 \newpage
 
 \section{Utilities}
+\subsection{\texttt{.clang-format} Configuration}
+\begin{minted}{cpp}
+{
+	BasedOnStyle: LLVM,
+	UseTab: Always,
+	IndentWidth: 4,
+	TabWidth: 4,
+	BreakBeforeBraces: Attach,
+	AllowShortIfStatementsOnASingleLine: true,
+	AllowShortLoopsOnASingleLine: true,
+	IndentCaseLabels: false,
+	AccessModifierOffset: -4,
+	NamespaceIndentation: All,
+	FixNamespaceComments: false,
+	ColumnLimit: 0
+}
+\end{minted}
+
 \subsection{Iterator Requirements}
 \subsection{Register \textbf{\texttt{\_\_uint128\_t}} as Unsigned}
 \begin{minted}{cpp}
