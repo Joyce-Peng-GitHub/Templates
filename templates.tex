@@ -66,6 +66,32 @@
 \end{minted}
 
 \subsection{Iterator Requirements}
+\begin{minted}{cpp}
+template <typename Iter>
+using RequireInputIter = typename std::enable_if<
+	std::is_base_of<
+		std::input_iterator_tag,
+		typename std::iterator_traits<Iter>::iterator_category>::value>::type;
+
+template <typename Iter>
+using RequireFwdIter = typename std::enable_if<
+	std::is_base_of<
+		std::forward_iterator_tag,
+		typename std::iterator_traits<Iter>::iterator_category>::value>::type;
+
+template <typename Iter>
+using RequireBidirIter = typename std::enable_if<
+	std::is_base_of<
+		std::bidirectional_iterator_tag,
+		typename std::iterator_traits<Iter>::iterator_category>::value>::type;
+
+template <typename Iter>
+using RequireRAIter = typename std::enable_if<
+	std::is_base_of<
+		std::random_access_iterator_tag,
+		typename std::iterator_traits<Iter>::iterator_category>::value>::type;
+\end{minted}
+
 \subsection{Register \textbf{\texttt{\_\_uint128\_t}} as Unsigned}
 \begin{minted}{cpp}
 namespace std {
