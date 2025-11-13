@@ -1495,31 +1495,6 @@ uint64_t cantorExpand(const std::vector<T> &arr,
 }
 
 /**
- * @return indices of elements consisting
- * 	one longest increasing subsequence of @param arr
- */
-template <typename T, typename Cmp = std::less<T>>
-std::vector<size_t> longestIncrSubseq(const std::vector<T> &arr, Cmp cmp = Cmp()) {
-	auto cmpVal = [&](size_t lhs, size_t rhs) { return cmp(arr[lhs], arr[rhs]); };
-	std::vector<size_t> min_end, res;
-	auto pre = std::vector<size_t>(arr.size());
-	for (size_t i = 0; i != arr.size(); ++i) {
-		size_t j = std::lower_bound(min_end.begin(), min_end.end(), i, cmpVal) -
-				   min_end.begin();
-		if (j == min_end.size()) {
-			min_end.push_back(i);
-		} else {
-			min_end[j] = i;
-		}
-		pre[i] = (j ? min_end[j - 1] : size_t(-1));
-	}
-	res.reserve(min_end.size());
-	for (size_t p = min_end.back(); ~p; p = pre[p]) res.push_back(p);
-	std::reverse(res.begin(), res.end());
-	return res;
-}
-
-/**
  * @return the number of inversions
  */
 template <typename OutputIter, typename AuxIter>
