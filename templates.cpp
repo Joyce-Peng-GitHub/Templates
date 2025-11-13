@@ -1,5 +1,52 @@
 #include <bits/stdc++.h>
 
+template <typename Int,
+		  typename = typename std::enable_if<std::is_integral<Int>::value>::type>
+inline void readInt(Int &res, FILE *file = stdin) {
+	res = 0;
+	bool neg = false;
+	int ch = std::fgetc(file);
+	while (~ch && std::isspace(ch)) ch = std::fgetc(file);
+	if (ch == '-') {
+		neg = true;
+		ch = std::fgetc(file);
+	} else if (ch == '+') {
+		ch = std::fgetc(file);
+	}
+	while (std::isdigit(ch)) {
+		res = (res << 1) + (res << 3) + (ch ^ '0');
+		ch = std::fgetc(file);
+	}
+	if (neg) res = -res;
+}
+
+template <typename Uint,
+		  typename = typename std::enable_if<std::is_integral<Uint>::value &&
+											 std::is_unsigned<Uint>::value>::type>
+inline void writeUint(Uint val, FILE *file = stdout) {
+	if (!val) {
+		std::fputc('0', file);
+		return;
+	}
+	std::array<char, 39> buf;
+	size_t cnt = 0;
+	while (val) {
+		buf[cnt++] = ((val % 10) ^ '0');
+		val /= 10;
+	}
+	while (cnt--) std::fputc(buf[cnt], file);
+}
+template <typename Int,
+		  typename = typename std::enable_if<std::is_integral<Int>::value>::type>
+inline void writeInt(Int val, FILE *file = stdout) {
+	if (val < 0) {
+		std::fputc('-', file);
+		writeUint(-static_cast<typename std::make_unsigned<Int>::type>(val), file);
+	} else {
+		writeUint(static_cast<typename std::make_unsigned<Int>::type>(val), file);
+	}
+}
+
 inline __uint128_t stoulll(const std::string &str, std::size_t *pos = nullptr, int base = 10) {
 	auto iter = str.begin();
 	while (iter != str.end() && std::isspace(*iter)) {
