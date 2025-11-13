@@ -90,30 +90,20 @@ inline __uint128_t stoulll(const std::string &str, std::size_t *pos = nullptr, i
 		} else {
 			break;
 		}
-		if (digit >= base) {
-			break;
-		}
-		if (res > (max_val - digit) / base) {
-			throw std::out_of_range("stoulll");
-		}
+		if (digit >= base) break;
+		if (res > (max_val - digit) / base) throw std::out_of_range("stoulll");
 		res = res * base + digit;
 		has_digit = true;
 		++iter;
 	}
-	if (!has_digit) {
-		throw std::invalid_argument("stoulll");
-	}
-	if (pos) {
-		*pos = iter - str.begin();
-	}
+	if (!has_digit) throw std::invalid_argument("stoulll");
+	if (pos) *pos = iter - str.begin();
 	return (neg ? (-res) : res);
 }
 
 inline __int128_t stolll(const std::string &str, std::size_t *pos = nullptr, int base = 10) {
 	auto iter = str.begin();
-	while (iter != str.end() && std::isspace(*iter)) {
-		++iter;
-	}
+	while (iter != str.end() && std::isspace(*iter)) ++iter;
 	bool neg = false;
 	if (*iter == '-') {
 		neg = true;
@@ -154,9 +144,7 @@ inline __int128_t stolll(const std::string &str, std::size_t *pos = nullptr, int
 		} else {
 			break;
 		}
-		if (digit >= base) {
-			break;
-		}
+		if (digit >= base) break;
 		if (neg) {
 			if (res < (min_val + digit) / base) {
 				throw std::out_of_range("stoulll");
@@ -172,12 +160,8 @@ inline __int128_t stolll(const std::string &str, std::size_t *pos = nullptr, int
 		has_digit = true;
 		++iter;
 	}
-	if (!has_digit) {
-		throw std::invalid_argument("stoulll");
-	}
-	if (pos) {
-		*pos = iter - str.begin();
-	}
+	if (!has_digit) throw std::invalid_argument("stoulll");
+	if (pos) *pos = iter - str.begin();
 	return res;
 }
 
@@ -197,7 +181,8 @@ inline T &maxEq(T &lhs, const T &rhs, Cmp cmp = Cmp()) {
  */
 template <typename T, typename Ret, typename Func,
 		  typename Cmp = std::less<Ret>>
-inline T lowerBound(T beg, T end, const Ret &val, Func func = Func(), Cmp cmp = Cmp()) {
+inline T lowerBound(T beg, T end, const Ret &val,
+					Func func = Func(), Cmp cmp = Cmp()) {
 	while (beg < end) {
 		T mid = beg + (end - beg) / 2;
 		if (cmp(func(mid), val)) {
@@ -215,7 +200,8 @@ inline T lowerBound(T beg, T end, const Ret &val, Func func = Func(), Cmp cmp = 
  */
 template <typename T, typename Ret, typename Func,
 		  typename Cmp = std::less<Ret>>
-inline T upperBound(T beg, T end, const Ret &val, Func func = Func(), Cmp cmp = Cmp()) {
+inline T upperBound(T beg, T end, const Ret &val,
+					Func func = Func(), Cmp cmp = Cmp()) {
 	while (beg < end) {
 		T mid = beg + (end - beg) / 2;
 		if (cmp(val, func(mid))) {
@@ -346,9 +332,7 @@ public:
 	bool empty() const noexcept { return m_fa_or_sz.empty(); }
 
 	size_t leader(size_t x) {
-		if (m_fa_or_sz[x] < 0) {
-			return x;
-		}
+		if (m_fa_or_sz[x] < 0) return x;
 		return (m_fa_or_sz[x] = leader(m_fa_or_sz[x]));
 	}
 	bool same(size_t x, size_t y) { return (leader(x) == leader(y)); }
@@ -358,12 +342,8 @@ public:
 	size_t merge(size_t x, size_t y) {
 		x = leader(x);
 		y = leader(y);
-		if (x == y) {
-			return x;
-		}
-		if (-m_fa_or_sz[x] < -m_fa_or_sz[y]) {
-			std::swap(x, y);
-		}
+		if (x == y) return x;
+		if (-m_fa_or_sz[x] < -m_fa_or_sz[y]) std::swap(x, y);
 		m_fa_or_sz[x] += m_fa_or_sz[y];
 		m_fa_or_sz[y] = x;
 		return x;
@@ -371,9 +351,7 @@ public:
 
 	std::vector<std::vector<size_t>> groups() {
 		std::vector<size_t> leader_of(size()), sz(size());
-		for (size_t i = 0; i != size(); ++i) {
-			++sz[leader_of[i] = leader(i)];
-		}
+		for (size_t i = 0; i != size(); ++i) ++sz[leader_of[i] = leader(i)];
 		std::vector<std::vector<size_t>> grps(size());
 		for (size_t i = 0; i != size(); ++i) {
 			grps[leader_of[i]].reserve(sz[leader_of[i]]);
@@ -458,12 +436,8 @@ public:
 									") > size() (which is " +
 									std::to_string(m_data.size()) + ')');
 		}
-		if (len == 0) {
-			throw std::out_of_range("SparseTable::query: len == 0");
-		}
-		if (pos + len > size()) {
-			len = size() - pos;
-		}
+		if (len == 0) throw std::out_of_range("SparseTable::query: len == 0");
+		if (pos + len > size()) len = size() - pos;
 		size_t log_len = floorLogn2(len);
 		return m_oper(m_data[pos][log_len],
 					  m_data[pos + len - (size_t(1) << log_len)][log_len]);
@@ -513,9 +487,7 @@ protected:
 		IterBase(DequeType *dq, size_type idx) : m_dq(dq), m_idx(idx) {}
 
 		// Allows implicit conversion from iterator to const_iterator
-		operator IterBase<true>() const {
-			return IterBase<true>(m_dq, m_idx);
-		}
+		operator IterBase<true>() const { return IterBase<true>(m_dq, m_idx); }
 
 		// Dereference operators
 		reference operator*() const { return (*m_dq)[m_idx]; }
@@ -602,24 +574,18 @@ public:
 		: m_data(nullptr), m_head(0), m_sz(0), m_cap(0) {
 		if (cnt > 0) {
 			m_initElems(cnt);
-			for (size_type i = 0; i < cnt; ++i) {
-				new (m_data + i) T();
-			}
+			for (size_type i = 0; i < cnt; ++i) new (m_data + i) T();
 			m_sz = cnt;
 		}
 	}
 	Deque(size_type cnt, const T &val)
 		: m_data(nullptr), m_head(0), m_sz(0), m_cap(0) {
 		m_initElems(cnt);
-		for (size_type i = 0; i < cnt; ++i) {
-			new (m_data + i) T(val);
-		}
+		for (size_type i = 0; i < cnt; ++i) new (m_data + i) T(val);
 		m_sz = cnt;
 	}
 	template <typename Iter, typename = RequireInputIter<Iter>>
-	Deque(Iter first, Iter last) : Deque() {
-		assign(first, last);
-	}
+	Deque(Iter first, Iter last) : Deque() { assign(first, last); }
 	Deque(const Deque &other) : Deque() {
 		if (other.empty()) return;
 		m_initElems(other.m_sz);
@@ -677,9 +643,7 @@ public:
 	void assign(size_type cnt, const T &val) {
 		clear();
 		if (cnt > m_cap) m_reallocate(cnt);
-		for (size_type i = 0; i < cnt; ++i) {
-			new (m_data + i) T(val);
-		}
+		for (size_type i = 0; i < cnt; ++i) new (m_data + i) T(val);
 		m_sz = cnt;
 		m_head = 0;
 	}
@@ -687,9 +651,7 @@ public:
 	template <typename Iter, typename = RequireInputIter<Iter>>
 	void assign(Iter first, Iter last) {
 		clear();
-		for (; first != last; ++first) {
-			pushBack(*first);
-		}
+		for (; first != last; ++first) pushBack(*first);
 	}
 
 	// Element Access
@@ -880,12 +842,8 @@ public:
 		new (m_data + m_head) T(std::forward<Args>(args)...);
 		++m_sz;
 	}
-	void pushFront(const T &val) {
-		emplaceFront(val);
-	}
-	void pushFront(T &&val) {
-		emplaceFront(std::move(val));
-	}
+	void pushFront(const T &val) { emplaceFront(val); }
+	void pushFront(T &&val) { emplaceFront(std::move(val)); }
 	void popFront() {
 		m_data[m_head].~T();
 		m_head = (m_head + 1) % m_cap;
@@ -899,12 +857,8 @@ public:
 		new (m_data + tail_pos) T(std::forward<Args>(args)...);
 		++m_sz;
 	}
-	void pushBack(const T &val) {
-		emplaceBack(val);
-	}
-	void pushBack(T &&val) {
-		emplaceBack(std::move(val));
-	}
+	void pushBack(const T &val) { emplaceBack(val); }
+	void pushBack(T &&val) { emplaceBack(std::move(val)); }
 	void popBack() {
 		size_type last_pos = (m_head + m_sz - 1) % m_cap;
 		m_data[last_pos].~T();
@@ -913,34 +867,22 @@ public:
 
 	void resize(size_type cnt) {
 		if (cnt < m_sz) {
-			for (size_type i = cnt; i < m_sz; ++i) {
-				(*this)[i].~T();
-			}
+			for (size_type i = cnt; i < m_sz; ++i) (*this)[i].~T();
 		} else if (cnt > m_sz) {
-			if (cnt > m_cap) {
-				m_reallocate(cnt);
-			}
+			if (cnt > m_cap) m_reallocate(cnt);
 			size_type old_size = m_sz;
-			for (size_type i = old_size; i < cnt; ++i) {
-				emplaceBack();
-			}
+			for (size_type i = old_size; i < cnt; ++i) emplaceBack();
 		}
 		m_sz = cnt;
 	}
 
 	void resize(size_type cnt, const value_type &val) {
 		if (cnt < m_sz) {
-			for (size_type i = cnt; i < m_sz; ++i) {
-				(*this)[i].~T();
-			}
+			for (size_type i = cnt; i < m_sz; ++i) (*this)[i].~T();
 		} else if (cnt > m_sz) {
-			if (cnt > m_cap) {
-				m_reallocate(cnt);
-			}
+			if (cnt > m_cap) m_reallocate(cnt);
 			size_type old_size = m_sz;
-			for (size_type i = old_size; i < cnt; ++i) {
-				pushBack(val);
-			}
+			for (size_type i = old_size; i < cnt; ++i) pushBack(val);
 		}
 		m_sz = cnt;
 	}
@@ -982,9 +924,7 @@ private:
 				elems_moved++;
 			}
 		} catch (...) {
-			for (size_type i = 0; i < elems_moved; ++i) {
-				(new_data + i)->~T();
-			}
+			for (size_type i = 0; i < elems_moved; ++i) (new_data + i)->~T();
 			::operator delete(new_data);
 			throw;
 		}
@@ -1012,10 +952,10 @@ private:
 			}
 		} catch (...) {
 			// Exception safety
-			for (size_type i = 0; i < gap_idx; ++i)
-				(new_data + i)->~T();
-			for (size_type i = gap_idx; i < elems_moved; ++i)
+			for (size_type i = 0; i < gap_idx; ++i) (new_data + i)->~T();
+			for (size_type i = gap_idx; i < elems_moved; ++i) {
 				(new_data + i + gap_cnt)->~T();
+			}
 			::operator delete(new_data);
 			throw;
 		}
@@ -1035,9 +975,7 @@ private:
 		}
 	}
 	void m_destroyAllElems() noexcept {
-		for (size_type i = 0; i < m_sz; ++i) {
-			(*this)[i].~T();
-		}
+		for (size_type i = 0; i < m_sz; ++i) (*this)[i].~T();
 	}
 	void m_initElems(size_type cnt) {
 		m_cap = cnt;
@@ -1089,16 +1027,12 @@ public:
 
 	inline void popFront() { m_dq.popFront(); }
 	inline void popFrontFor(const T &val) {
-		while (m_dq.size() && !m_cmp(val, m_dq.front())) {
-			popFront();
-		}
+		while (m_dq.size() && !m_cmp(val, m_dq.front())) popFront();
 	}
 
 	inline void popBack() { m_dq.popBack(); }
 	inline void popBackFor(const T &val) {
-		while (size() && !m_cmp(m_dq.back(), val)) {
-			popBack();
-		}
+		while (size() && !m_cmp(m_dq.back(), val)) popBack();
 	}
 
 	inline void clear() noexcept { m_dq.clear(); }
@@ -1377,13 +1311,9 @@ public:
 	 * @return the sum of [0, min(n, size()))
 	 */
 	inline T query(size_t n = -1) const {
-		if (n >= m_tree.size()) {
-			n = m_tree.size() - 1;
-		}
+		if (n >= m_tree.size()) n = m_tree.size() - 1;
 		T res = id_elem;
-		for (; n; n -= lowbit(n)) {
-			res = m_oper(res, m_tree[n]);
-		}
+		for (; n; n -= lowbit(n)) res = m_oper(res, m_tree[n]);
 		return res;
 	}
 	inline T operator[](size_t n) const { return query(n); }
@@ -1403,9 +1333,7 @@ protected:
 	inline void m_build() {
 		for (size_t i = 1, j; i < m_tree.size(); ++i) {
 			j = i + lowbit(i);
-			if (j < m_tree.size()) {
-				m_tree[j] = m_oper(m_tree[j], m_tree[i]);
-			}
+			if (j < m_tree.size()) m_tree[j] = m_oper(m_tree[j], m_tree[i]);
 		}
 	}
 	inline void m_rebuild(size_t old_tree_sz) {
@@ -1453,12 +1381,8 @@ protected:
 		}
 
 		~Node() {
-			if (lch) {
-				delete lch;
-			}
-			if (rch) {
-				delete rch;
-			}
+			if (lch) delete lch;
+			if (rch) delete rch;
 		}
 	};
 
@@ -1484,9 +1408,7 @@ protected:
 
 	int64_t m_query(Node *p, size_t nd_beg, size_t nd_end, size_t beg, size_t end) {
 		assert(nd_beg <= beg && beg < end && end <= nd_end);
-		if (nd_beg == beg && nd_end == end) {
-			return p->val;
-		}
+		if (nd_beg == beg && nd_end == end) return p->val;
 		int64_t res = (end - beg) * p->lzy;
 		size_t nd_mid = nd_beg + ((nd_end - nd_beg) >> 1);
 		if (beg < nd_mid && p->lch) {
@@ -1592,9 +1514,7 @@ std::vector<size_t> longestIncrSubseq(const std::vector<T> &arr, Cmp cmp = Cmp()
 		pre[i] = (j ? min_end[j - 1] : size_t(-1));
 	}
 	res.reserve(min_end.size());
-	for (size_t p = min_end.back(); ~p; p = pre[p]) {
-		res.push_back(p);
-	}
+	for (size_t p = min_end.back(); ~p; p = pre[p]) res.push_back(p);
 	std::reverse(res.begin(), res.end());
 	return res;
 }
@@ -1603,12 +1523,9 @@ std::vector<size_t> longestIncrSubseq(const std::vector<T> &arr, Cmp cmp = Cmp()
  * @return the number of inversions
  */
 template <typename OutputIter, typename AuxIter>
-size_t mergeSort(OutputIter first, OutputIter last,
-				 AuxIter aux) {
+size_t mergeSort(OutputIter first, OutputIter last, AuxIter aux) {
 	size_t n = std::distance(first, last);
-	if (n <= 1) {
-		return 0;
-	}
+	if (n <= 1) return 0;
 	auto mid = std::next(first, n >> 1);
 	size_t inv = mergeSort(first, mid, aux) + mergeSort(mid, last, aux);
 	auto i = first, j = mid, k = aux;
@@ -1622,12 +1539,8 @@ size_t mergeSort(OutputIter first, OutputIter last,
 			--cnt;
 		}
 	}
-	while (i != mid) {
-		*(k++) = *(i++);
-	}
-	while (j != last) {
-		*(k++) = *(j++);
-	}
+	while (i != mid) *(k++) = *(i++);
+	while (j != last) *(k++) = *(j++);
 	std::copy(aux, k, first);
 	return inv;
 }
@@ -1646,9 +1559,7 @@ template <typename Uint = uint64_t, typename Aux = __uint128_t,
 inline Uint qPowMod(Uint base, Uint exp, Uint mod) {
 	Aux mul = base, res = 1;
 	while (exp) {
-		if (exp & 1) {
-			res = res * mul % mod;
-		}
+		if (exp & 1) res = res * mul % mod;
 		mul = mul * mul % mod;
 		exp >>= 1;
 	}
@@ -1697,9 +1608,7 @@ std::vector<uint32_t> modMulInvs(uint32_t max, uint64_t mod) {
  * @note assuming @c mod is a prime; inverse of 0 is undefined.
  */
 std::vector<uint64_t> modMulInvs(const std::vector<uint64_t> &arr, uint64_t mod) {
-	if (arr.empty()) {
-		return arr;
-	}
+	if (arr.empty()) return arr;
 	auto pref_prods = std::vector<uint64_t>(arr.size() + 1);
 	pref_prods[0] = 1;
 	for (size_t i = 0; i != arr.size(); ++i) {
@@ -1732,9 +1641,7 @@ inline std::vector<uint64_t> derangements(uint64_t max, uint64_t mod) {
 }
 
 std::vector<uint32_t> sieveOfEratosthenes(uint32_t max) {
-	if (max <= 1) {
-		return {};
-	}
+	if (max <= 1) return {};
 	auto not_prime = std::vector<bool>(max + 1);
 	std::vector<uint32_t> primes;
 	primes.emplace_back(2);
@@ -1742,40 +1649,26 @@ std::vector<uint32_t> sieveOfEratosthenes(uint32_t max) {
 		not_prime[i] = true;
 	}
 	for (uint32_t i = 3; i * i <= max; i += 2) {
-		if (not_prime[i]) {
-			continue;
-		}
-		for (uint32_t j = (i << 1); j <= max; j += i) {
-			not_prime[j] = true;
-		}
+		if (not_prime[i]) continue;
+		for (uint32_t j = (i << 1); j <= max; j += i) not_prime[j] = true;
 	}
 	for (uint32_t i = 3; i <= max; i += 2) {
-		if (!not_prime[i]) {
-			primes.emplace_back(i);
-		}
+		if (!not_prime[i]) primes.emplace_back(i);
 	}
 	return primes;
 }
 
 std::vector<uint32_t> linearSieve(uint32_t max) {
-	if (max <= 1) {
-		return {};
-	}
+	if (max <= 1) return {};
 	auto not_prime = std::vector<bool>(max + 1);
 	std::vector<uint32_t> primes;
 	primes.emplace_back(2);
 	for (uint32_t i = 3; i <= max; i += 2) {
-		if (!not_prime[i]) {
-			primes.emplace_back(i);
-		}
+		if (!not_prime[i]) primes.emplace_back(i);
 		for (auto j : primes) {
-			if (j * i > max) {
-				break;
-			}
+			if (j * i > max) break;
 			not_prime[j * i] = true; // j is the minimum prime factor of i * j
-			if (i % j == 0) {
-				break;
-			}
+			if (i % j == 0) break;
 		}
 	}
 	return primes;
@@ -1791,15 +1684,11 @@ inline void bitRevPerm(Iter begin, Iter end) {
 	auto rev = std::vector<size_t>(n);
 	for (size_t i = 1; i < n; ++i) {
 		rev[i] = (rev[i >> 1] >> 1);
-		if (i & 1) {
-			rev[i] |= (n >> 1);
-		}
+		if (i & 1) rev[i] |= (n >> 1);
 	}
 	Iter iter = begin;
 	for (size_t i = 0; i != n; ++i, ++iter) {
-		if (i < rev[i]) {
-			std::swap(*iter, *std::next(begin, rev[i]));
-		}
+		if (i < rev[i]) std::swap(*iter, *std::next(begin, rev[i]));
 	}
 }
 
@@ -1820,9 +1709,7 @@ inline void fft(std::vector<std::complex<Float>> &arr, bool inv = false) {
 		}
 	}
 	if (inv) {
-		for (auto &x : arr) {
-			x /= arr.size();
-		}
+		for (auto &x : arr) x /= arr.size();
 	}
 }
 
@@ -1831,8 +1718,7 @@ inline std::vector<size_t> prefFuncOf(Iter begin, Iter end) {
 	auto pi = std::vector<size_t>(std::distance(begin, end));
 	end = std::next(begin);
 	for (size_t i = 1, j; i < pi.size(); ++i, ++end) {
-		for (j = pi[i - 1]; j && *end != *std::next(begin, j); j = pi[j - 1])
-			;
+		for (j = pi[i - 1]; j && *end != *std::next(begin, j); j = pi[j - 1]);
 		pi[i] = j + (*end == *std::next(begin, j));
 	}
 	return pi;
@@ -1853,9 +1739,7 @@ kmp(Iter text_begin, Iter text_end,
 	auto pi = prefFuncOf(seq.begin(), seq.end());
 	std::vector<size_t> res;
 	for (size_t i = (pattern_sz << 1); i != pi.size(); ++i) {
-		if (pi[i] == pattern_sz) {
-			res.emplace_back(i - (pattern_sz << 1));
-		}
+		if (pi[i] == pattern_sz) res.emplace_back(i - (pattern_sz << 1));
 	}
 	return res;
 }
@@ -1864,9 +1748,7 @@ template <typename Iter>
 inline std::vector<size_t> borderLengths(Iter begin, Iter end) {
 	auto pi = prefFuncOf(begin, end);
 	std::vector<size_t> res;
-	for (size_t i = pi.size(); i; i = pi[i - 1]) {
-		res.emplace_back(pi[i - 1]);
-	}
+	for (size_t i = pi.size(); i; i = pi[i - 1]) res.emplace_back(pi[i - 1]);
 	return res;
 }
 
@@ -1875,9 +1757,7 @@ inline std::vector<size_t> borderLengths(Iter begin, Iter end) {
  */
 template <typename Iter>
 inline size_t periodLength(Iter begin, Iter end) {
-	if (begin == end) {
-		return 0;
-	}
+	if (begin == end) return 0;
 	auto pi = prefFuncOf(begin, end);
 	return (pi.size() - pi.back());
 }
@@ -1891,9 +1771,7 @@ std::vector<Mod> hashOf(const std::string &s,
 						Mod base = 233, Mod mod = 993244853) {
 	auto h = std::vector<Mod>(s.size() + 1);
 	Aux b = base;
-	for (size_t i = 0; i != s.size(); ++i) {
-		h[i + 1] = (h[i] * b + s[i]) % mod;
-	}
+	for (size_t i = 0; i != s.size(); ++i) h[i + 1] = (h[i] * b + s[i]) % mod;
 	return h;
 }
 
@@ -1910,39 +1788,23 @@ sufArrOf(Iter begin, Iter end) {
 		 height = std::vector<size_t>(n),
 		 tmp = std::vector<size_t>(n);
 
-	for (size_t i = 0; i < n; ++i) {
-		++cnt[ra[i]];
-	}
-	for (size_t i = 1; i < unq; ++i) {
-		cnt[i] += cnt[i - 1];
-	}
-	for (size_t i = n; (i--) > 0;) {
-		sa[--cnt[ra[i]]] = i;
-	}
+	for (size_t i = 0; i < n; ++i) ++cnt[ra[i]];
+	for (size_t i = 1; i < unq; ++i) cnt[i] += cnt[i - 1];
+	for (size_t i = n; (i--) > 0;) sa[--cnt[ra[i]]] = i;
 
 	for (size_t len = 1, tot; len < n; len <<= 1) {
 		// Sort sa so that ra[sa[i] + len] <= ra[sa[i + 1] + len]
 		tot = 0;
-		for (size_t i = n - len; i != n; ++i) {
-			tmp[tot++] = i;
-		}
+		for (size_t i = n - len; i != n; ++i) tmp[tot++] = i;
 		for (size_t i = 0; i != n; ++i) {
-			if (sa[i] >= len) {
-				tmp[tot++] = sa[i] - len;
-			}
+			if (sa[i] >= len) tmp[tot++] = sa[i] - len;
 		}
 
 		// Stably sort sa so that ra[sa[i]] <= ra[sa[i + 1]]
 		std::fill(cnt.begin(), cnt.begin() + unq, 0);
-		for (auto i : tmp) {
-			++cnt[ra[i]];
-		}
-		for (size_t i = 1; i != unq; ++i) {
-			cnt[i] += cnt[i - 1];
-		}
-		for (size_t i = n; (i--) > 0;) {
-			sa[--cnt[ra[tmp[i]]]] = tmp[i];
-		}
+		for (auto i : tmp) ++cnt[ra[i]];
+		for (size_t i = 1; i != unq; ++i) cnt[i] += cnt[i - 1];
+		for (size_t i = n; (i--) > 0;) sa[--cnt[ra[tmp[i]]]] = tmp[i];
 
 		// Update ra
 		std::copy(ra.begin(), ra.end(), tmp.begin());
@@ -1970,13 +1832,10 @@ sufArrOf(Iter begin, Iter end) {
 			len = 0;
 			continue;
 		}
-		if (len) {
-			--len;
-		}
+		if (len) --len;
 		for (j = sa[ra[i] - 1];
 			 *std::next(begin, i + len) == *std::next(begin, j + len);
-			 ++len)
-			;
+			 ++len);
 		height[ra[i]] = len;
 	}
 
@@ -1992,34 +1851,24 @@ template <typename Iter, typename = RequireFwdIter<Iter>>
 inline std::pair<std::vector<size_t>, std::vector<size_t>>
 manacher(Iter begin, Iter end) {
 	size_t n = std::distance(begin, end);
-	if (!n) {
-		return {{}, {}};
-	}
+	if (!n) return {{}, {}};
 	auto odd = std::vector<size_t>(n), even = std::vector<size_t>(n);
 	odd[0] = 1;
 	for (size_t i = 1, b = 0, e = 1; i != n; ++i) {
-		if (i < e) {
-			odd[i] = std::min(odd[b + e - 1 - i], e - i);
-		}
+		if (i < e) odd[i] = std::min(odd[b + e - 1 - i], e - i);
 		while (odd[i] <= i && i + odd[i] < n &&
 			   *std::next(begin, i - odd[i]) ==
-				   *std::next(begin, i + odd[i])) {
-			++odd[i];
-		}
+				   *std::next(begin, i + odd[i])) ++odd[i];
 		if (i + odd[i] > e) {
 			b = i - odd[i] + 1;
 			e = i + odd[i];
 		}
 	}
 	for (size_t i = 0, b = 0, e = 0; i != n; ++i) {
-		if (i < e) {
-			even[i] = std::min(even[b + e - i], e - i);
-		}
+		if (i < e) even[i] = std::min(even[b + e - i], e - i);
 		while (even[i] < i && i + even[i] < n &&
 			   *std::next(begin, i - even[i] - 1) ==
-				   *std::next(begin, i + even[i])) {
-			++even[i];
-		}
+				   *std::next(begin, i + even[i])) ++even[i];
 		if (i + even[i] > e) {
 			b = i - even[i];
 			e = i + even[i];
@@ -2051,16 +1900,12 @@ public:
 	void assign(size_t n) {
 		m_edges.clear();
 		m_adj.resize(n);
-		for (auto &lst : m_adj) {
-			lst.clear();
-		}
+		for (auto &lst : m_adj) lst.clear();
 	}
 	void assign(size_t n, const std::vector<Edge> &edges) {
 		m_edges = edges;
 		m_adj.resize(n);
-		for (auto &lst : m_adj) {
-			lst.clear();
-		}
+		for (auto &lst : m_adj) lst.clear();
 		m_insertEdgesToAdj();
 	}
 
@@ -2173,9 +2018,7 @@ Graph<Weight, is_directed>::tarjanSccs() const {
 		}
 	};
 	for (size_t i = 0; i != m_adj.size(); ++i) {
-		if (dfn[i] == size_t(-1)) {
-			dfs(i);
-		}
+		if (dfn[i] == size_t(-1)) dfs(i);
 	}
 	return sccs;
 }
@@ -2239,12 +2082,8 @@ Graph<Weight, is_directed>::tarjanCutAndBccs() const {
 			cut_verts.emplace_back();
 			bridges.emplace_back();
 			dfs(-1, i);
-			if (vbcc_stk.size()) {
-				vbccs.emplace_back(std::move(vbcc_stk));
-			}
-			if (ebcc_stk.size()) {
-				ebccs.emplace_back(std::move(ebcc_stk));
-			}
+			if (vbcc_stk.size()) vbccs.emplace_back(std::move(vbcc_stk));
+			if (ebcc_stk.size()) ebccs.emplace_back(std::move(ebcc_stk));
 		}
 	}
 	return {{cut_verts, vbccs}, {bridges, ebccs}};
@@ -2255,14 +2094,10 @@ inline std::vector<size_t> Graph<Weight, is_directed>::toposort() const {
 	static_assert(is_directed,
 				  "Topological sorting is only applicable to directed graphs.");
 	std::vector<size_t> indeg(m_adj.size());
-	for (auto &edge : m_edges) {
-		++indeg[edge.v];
-	}
+	for (auto &edge : m_edges) ++indeg[edge.v];
 	std::vector<size_t> res, zero_indeg_verts;
 	for (size_t i = 0; i != m_adj.size(); ++i) {
-		if (!indeg[i]) {
-			zero_indeg_verts.emplace_back(i);
-		}
+		if (!indeg[i]) zero_indeg_verts.emplace_back(i);
 	}
 	while (zero_indeg_verts.size()) {
 		size_t frm = zero_indeg_verts.back();
@@ -2282,9 +2117,7 @@ inline std::vector<std::vector<size_t>>
 Graph<Weight, is_directed>::kruskal() const {
 	static_assert(!is_directed,
 				  "Kruskal's algorithm is only applicable to undirected graphs.");
-	if (m_adj.size() < 2) {
-		return {};
-	}
+	if (m_adj.size() < 2) return {};
 
 	std::vector<size_t> sorted(m_edges.size());
 	std::iota(sorted.begin(), sorted.end(), 0);
@@ -2296,9 +2129,7 @@ Graph<Weight, is_directed>::kruskal() const {
 	std::vector<size_t> dsu(m_adj.size());
 	std::iota(dsu.begin(), dsu.end(), 0);
 	auto find = [&](size_t x) -> size_t {
-		while (dsu[dsu[x]] != dsu[x]) {
-			dsu[x] = dsu[dsu[x]];
-		}
+		while (dsu[dsu[x]] != dsu[x]) dsu[x] = dsu[dsu[x]];
 		return dsu[x];
 	};
 	auto merge = [&](size_t to, size_t frm) { dsu[find(frm)] = find(to); };
@@ -2314,14 +2145,10 @@ Graph<Weight, is_directed>::kruskal() const {
 
 	// Classify edges into connected components
 	std::unordered_map<size_t, std::vector<size_t>> components;
-	for (auto i : msf_edges) {
-		components[find(m_edges[i].u)].emplace_back(i);
-	}
+	for (auto i : msf_edges) components[find(m_edges[i].u)].emplace_back(i);
 	std::vector<std::vector<size_t>> res;
 	res.reserve(components.size());
-	for (auto &pr : components) {
-		res.emplace_back(std::move(pr.second));
-	}
+	for (auto &pr : components) res.emplace_back(std::move(pr.second));
 	return res;
 }
 
@@ -2329,9 +2156,7 @@ template <typename Weight, bool is_directed>
 inline std::vector<size_t> Graph<Weight, is_directed>::prim(size_t rt) const {
 	static_assert(!is_directed,
 				  "Prim algorithm is only applicable to undirected graphs.");
-	if (m_adj.size() < 2) {
-		return {};
-	}
+	if (m_adj.size() < 2) return {};
 
 	std::vector<size_t> mst_edges;
 	mst_edges.reserve(m_adj.size() - 1);
@@ -2345,9 +2170,7 @@ inline std::vector<size_t> Graph<Weight, is_directed>::prim(size_t rt) const {
 		vis[frm] = true;
 		for (auto i : m_adj[frm]) {
 			const auto &edge = m_edges[i];
-			if (!vis[(edge.u == frm ? edge.v : edge.u)]) {
-				pq.push(i);
-			}
+			if (!vis[(edge.u == frm ? edge.v : edge.u)]) pq.push(i);
 		}
 	};
 
@@ -2356,9 +2179,7 @@ inline std::vector<size_t> Graph<Weight, is_directed>::prim(size_t rt) const {
 		size_t i = pq.top();
 		pq.pop();
 		size_t u = m_edges[i].u, v = m_edges[i].v;
-		if (vis[u] && vis[v]) {
-			continue;
-		}
+		if (vis[u] && vis[v]) continue;
 		mst_edges.emplace_back(i);
 		visit(vis[u] ? v : u);
 	}
@@ -2378,14 +2199,14 @@ inline std::vector<Weight> Graph<Weight, is_directed>::dijkstra(size_t src) cons
 	while (pq.size()) {
 		auto frm = pq.top().second;
 		pq.pop();
-		if (vis[frm]) {
-			continue;
-		}
+		if (vis[frm]) continue;
 		vis[frm] = true;
 		for (auto i : m_adj[frm]) {
 			auto to = (is_directed
 						   ? m_edges[i].v
-						   : ((m_edges[i].u == frm) ? m_edges[i].v : m_edges[i].u));
+						   : ((m_edges[i].u == frm)
+								  ? m_edges[i].v
+								  : m_edges[i].u));
 			auto w = m_edges[i].w;
 			if (dist[to] > dist[frm] + w) {
 				pq.emplace(dist[to] = dist[frm] + w, to);
@@ -2414,13 +2235,9 @@ Graph<Weight, is_directed>::bellmanFord(size_t src) const {
 		bool flag = true;
 		for (auto &edge : m_edges) {
 			flag &= relax(edge.u, edge.v, edge.w);
-			if (!is_directed) {
-				flag &= relax(edge.v, edge.u, edge.w);
-			}
+			if (!is_directed) flag &= relax(edge.v, edge.u, edge.w);
 		}
-		if (flag) {
-			return dist;
-		}
+		if (flag) return dist;
 	}
 	return {}; // negative cycle detected
 }
@@ -2450,9 +2267,7 @@ Graph<Weight, is_directed>::spfa(size_t src) const {
 				 * the shortest path between 2 vertices consists of at most
 				 * (n - 1) edgess
 				 */
-				if ((cnt[to] = cnt[frm] + 1) >= m_adj.size()) {
-					return {};
-				}
+				if ((cnt[to] = cnt[frm] + 1) >= m_adj.size()) return {};
 				if (!inq[to]) {
 					inq[to] = true;
 					q.emplace(to);
@@ -2467,9 +2282,7 @@ template <typename Weight>
 inline std::vector<std::vector<Weight>>
 floyd(std::vector<std::vector<Weight>> weights) {
 	size_t n = weights.size();
-	if (!n) {
-		return {};
-	}
+	if (!n) return {};
 	assert(n == weights[0].size());
 	for (size_t i = 0, j, k; i != n; ++i) {
 		for (j = 0; j != n; ++j) {
@@ -2488,9 +2301,7 @@ template <typename Weight>
 inline std::vector<std::vector<Weight>>
 floydMatMul(std::vector<std::vector<Weight>> weights) {
 	size_t n = weights.size();
-	if (!n) {
-		return {};
-	}
+	if (!n) return {};
 	assert(n == weights[0].size());
 	using Mat = std::vector<std::vector<Weight>>;
 	auto matMul = [](const Mat &lhs, const Mat &rhs) -> Mat {
@@ -2509,13 +2320,9 @@ floydMatMul(std::vector<std::vector<Weight>> weights) {
 		return res;
 	};
 	auto res = Mat(n, std::vector<int32_t>(n, std::numeric_limits<Weight>::max()));
-	for (size_t i = 0; i != n; ++i) {
-		res[i][i] = 0;
-	}
+	for (size_t i = 0; i != n; ++i) res[i][i] = 0;
 	for (; n; n >>= 1) {
-		if (n & 1) {
-			res = matMul(res, weights);
-		}
+		if (n & 1) res = matMul(res, weights);
 		weights = matMul(weights, weights);
 	}
 	return res;
@@ -2529,12 +2336,8 @@ inline std::vector<size_t>
 shortestHamiltonianCycle(const std::vector<std::vector<Weight>> &adj_mat,
 						 Weight inf = std::numeric_limits<Weight>::max()) {
 	size_t n = adj_mat.size();
-	if (!n) {
-		return {};
-	}
-	if (n == 1) {
-		return {0};
-	}
+	if (!n) return {};
+	if (n == 1) return {0};
 	auto dp = std::vector<std::vector<Weight>>(uint64_t(1) << n,
 											   std::vector<Weight>(n, inf));
 	auto pre = std::vector<std::vector<size_t>>(
@@ -2543,9 +2346,7 @@ shortestHamiltonianCycle(const std::vector<std::vector<Weight>> &adj_mat,
 	dp[1][0] = 0;
 	for (uint64_t set = 1; set < (uint64_t(1) << n); set += 2) {
 		for (size_t cur = (set != 1); cur < n; ++cur) {
-			if (!(set & (1 << cur))) {
-				continue;
-			}
+			if (!(set & (1 << cur))) continue;
 			for (size_t nxt = 1; nxt < n; ++nxt) {
 				if ((set & (1 << nxt)) || adj_mat[cur][nxt] == inf) {
 					continue;
@@ -2586,12 +2387,8 @@ shortestHamiltonianPath(const std::vector<std::vector<Weight>> &adj_mat,
 						Weight inf = std::numeric_limits<Weight>::max()) {
 
 	size_t n = adj_mat.size();
-	if (!n) {
-		return {};
-	}
-	if (n == 1) {
-		return {0};
-	}
+	if (!n) return {};
+	if (n == 1) return {0};
 	auto dp = std::vector<std::vector<Weight>>(uint64_t(1) << n,
 											   std::vector<Weight>(n, inf));
 	auto pre = std::vector<std::vector<size_t>>(uint64_t(1) << n,
@@ -2599,18 +2396,12 @@ shortestHamiltonianPath(const std::vector<std::vector<Weight>> &adj_mat,
 	if (src != size_t(-1)) {
 		dp[uint64_t(1) << src][src] = 0;
 	} else {
-		for (size_t i = 0; i < n; ++i) {
-			dp[uint64_t(1) << i][i] = 0;
-		}
+		for (size_t i = 0; i < n; ++i) dp[uint64_t(1) << i][i] = 0;
 	}
 	for (uint64_t set = 1; set < (uint64_t(1) << n); ++set) {
 		for (size_t cur = 0; cur < n; ++cur) {
-			if (!(set & (uint64_t(1) << cur))) {
-				continue;
-			}
-			if (dp[set][cur] == inf) {
-				continue;
-			}
+			if (!(set & (uint64_t(1) << cur))) continue;
+			if (dp[set][cur] == inf) continue;
 			for (size_t nxt = 0; nxt < n; ++nxt) {
 				if ((set & (uint64_t(1) << nxt)) || adj_mat[cur][nxt] == inf) {
 					continue;
@@ -2633,9 +2424,7 @@ shortestHamiltonianPath(const std::vector<std::vector<Weight>> &adj_mat,
 			last = i;
 		}
 	}
-	if (last == size_t(-1)) {
-		return {};
-	}
+	if (last == size_t(-1)) return {};
 	std::vector<size_t> res;
 	res.reserve(n);
 	uint64_t current_set = full_set;
