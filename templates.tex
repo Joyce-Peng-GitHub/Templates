@@ -1744,11 +1744,17 @@ public:
 	std::vector<Weight> bellmanFord(size_t src) const;
 	std::vector<Weight> spfa(size_t src) const;
 
+	std::pair<Weight, std::vector<bool>>
+	dinic(size_t src, size_t dst,
+		  Weight max = std::numeric_limits<Weight>::max()) const;
+
 protected:
 	std::vector<Edge> m_edges;
 	std::vector<std::vector<size_t>> m_adj;
 
 	void m_insertToAdj(size_t idx) {
+		size_t sz_requirement = std::max(m_edges[idx].u, m_edges[idx].v) + 1;
+		if (sz_requirement > m_adj.size()) m_adj.resize(sz_requirement);
 		m_adj[m_edges[idx].u].emplace_back(idx);
 		if (m_edges[idx].u != m_edges[idx].v) {
 			m_adj[m_edges[idx].v].emplace_back(idx);
@@ -2220,6 +2226,95 @@ shortestHamiltonianPath(const std::vector<std::vector<Weight>> &adj_mat,
 	}
 	std::reverse(res.begin(), res.end());
 	return res;
+}
+\end{minted}
+
+\subsection{Network Flow}
+\subsubsection{Max Flow and Min Cut}
+\begin{minted}{cpp}
+/**
+ * @return {max flow, min cut} from src to dst
+ */
+template <typename Weight, bool is_directed>
+std::pair<Weight, std::vector<bool>>
+Graph<Weight, is_directed>::dinic(size_t src, size_t dst, Weight max) const {
+	struct DinicEdge {
+		size_t to;
+		Weight cap;
+	};
+
+	std::vector<DinicEdge> dinic_edges;
+	dinic_edges.reserve(m_edges.size() << 1);
+	std::vector<std::vector<size_t>> dinic_adj(m_adj.size());
+	for (size_t i = 0; i < m_adj.size(); ++i) {
+		dinic_adj[i].reserve(m_adj[i].size() << 1);
+	}
+	std::vector<size_t> dep(m_adj.size()), iter(m_adj.size());
+
+	for (const auto &edge : m_edges) {
+		if (edge.u == edge.v) continue; // ignore self-loops
+		dinic_adj[edge.u].push_back(dinic_edges.size());
+		dinic_edges.push_back(DinicEdge{edge.v, edge.w});
+		dinic_adj[edge.v].push_back(dinic_edges.size());
+		dinic_edges.push_back(DinicEdge{edge.u, 0});
+	}
+
+	auto bfs = [&]() -> bool {
+		std::fill(dep.begin(), dep.end(), size_t(-1));
+		dep[src] = 0;
+		std::queue<size_t> q;
+		q.push(src);
+
+		while (q.size()) {
+			auto frm = q.front();
+			q.pop();
+			for (auto i : dinic_adj[frm]) {
+				const auto &edge = dinic_edges[i];
+				if (!edge.cap || ~dep[edge.to]) continue;
+				dep[edge.to] = dep[frm] + 1;
+				q.push(edge.to);
+			}
+		}
+		return ~dep[dst];
+	};
+	std::function<Weight(size_t, Weight)> dfs =
+		[&](size_t cur, const Weight &up) -> Weight {
+		if (cur == dst) return up;
+		for (size_t &i = iter[cur]; i != dinic_adj[cur].size(); ++i) {
+			auto &edge = dinic_edges[dinic_adj[cur][i]];
+			if (!edge.cap || dep[cur] >= dep[edge.to]) continue;
+			auto down = dfs(edge.to, std::min(up, edge.cap));
+			if (!down) continue;
+			edge.cap -= down;
+			dinic_edges[dinic_adj[cur][i] ^ 1].cap += down;
+			return down;
+		}
+		return 0;
+	};
+
+	Weight max_flow = 0;
+	while (bfs()) {
+		std::fill(iter.begin(), iter.end(), 0);
+		Weight cur_flow;
+		while (cur_flow = dfs(src, max)) max_flow += cur_flow;
+	}
+
+	std::vector<bool> min_cut(m_adj.size());
+	min_cut[src] = true;
+	std::queue<size_t> q;
+	q.push(src);
+	while (q.size()) {
+		size_t frm = q.front();
+		q.pop();
+		for (auto i : dinic_adj[frm]) {
+			const auto &edge = dinic_edges[i];
+			if (!edge.cap || min_cut[edge.to]) continue;
+			min_cut[edge.to] = true;
+			q.push(edge.to);
+		}
+	}
+
+	return std::make_pair(max_flow, std::move(min_cut));
 }
 \end{minted}
 
