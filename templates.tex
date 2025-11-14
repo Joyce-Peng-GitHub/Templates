@@ -50,6 +50,14 @@
 \fancyhf{}
 % Center footer: show 0 on prelim pages, otherwise the real page number
 \fancyfoot[C]{\ifprelim 0\else\thepage\fi}
+% Make the plain page style (used by \maketitle and some chapter/section pages)
+% behave the same as the current fancy style so the title page prints 0 too.
+\fancypagestyle{plain}{%
+	\fancyhf{}%
+	\fancyfoot[C]{\ifprelim 0\else\thepage\fi}%
+	\renewcommand{\headrulewidth}{0pt}%
+	\renewcommand{\footrulewidth}{0pt}%
+}
 
 \maketitle
 \tableofcontents
