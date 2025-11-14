@@ -41,10 +41,16 @@
 
 \begin{document}
 
+% Print page number "0" on all front-matter pages (title, TOC).
+% Using \renewcommand{\thepage}{0} ensures each preliminary page shows 0
+% even if the TOC spans multiple pages.
+\renewcommand{\thepage}{0}
 \maketitle
 \tableofcontents
-
-\newpage
+\clearpage
+% Restore normal arabic page numbering and start from page 1 for main content
+\renewcommand{\thepage}{\arabic{page}}
+\setcounter{page}{1}
 
 \section{Utilities}
 \subsection{\texttt{.clang-format} Configuration}
