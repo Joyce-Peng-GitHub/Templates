@@ -9,6 +9,7 @@
 \usepackage{graphicx}
 \usepackage[colorlinks=true,linkcolor=blue,hidelinks,unicode]{hyperref}
 \usepackage{minted}
+\usepackage{fancyhdr}
 
 \usepackage[a4paper,margin=2cm]{geometry}
 \newcommand{\ssection}[1]{\section*{#1}\phantomsection\addcontentsline{toc}{section}{#1}}
@@ -41,15 +42,20 @@
 
 \begin{document}
 
-% Print page number "0" on all front-matter pages (title, TOC).
-% Using \renewcommand{\thepage}{0} ensures each preliminary page shows 0
-% even if the TOC spans multiple pages.
-\renewcommand{\thepage}{0}
+% Configure a page style that prints "0" on preliminary pages while leaving
+% the internal page counter unchanged (so TOC entries record correct numbers).
+\newif\ifprelim
+\prelimtrue
+\pagestyle{fancy}
+\fancyhf{}
+% Center footer: show 0 on prelim pages, otherwise the real page number
+\fancyfoot[C]{\ifprelim 0\else\thepage\fi}
+
 \maketitle
 \tableofcontents
 \clearpage
-% Restore normal arabic page numbering and start from page 1 for main content
-\renewcommand{\thepage}{\arabic{page}}
+% End prelim pages: restore normal printed page numbers and start main pages at 1
+\prelimfalse
 \setcounter{page}{1}
 
 \section{Utilities}
