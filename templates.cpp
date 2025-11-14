@@ -1937,7 +1937,7 @@ public:
 
 	std::pair<Weight, std::vector<bool>>
 	dinic(size_t src, size_t dst,
-		  Weight max = std::numeric_limits<Weight>::max()) const;
+		  Weight lim = std::numeric_limits<Weight>::max()) const;
 
 protected:
 	std::vector<Edge> m_edges;
@@ -2424,80 +2424,90 @@ shortestHamiltonianPath(const std::vector<std::vector<Weight>> &adj_mat,
  */
 template <typename Weight, bool is_directed>
 std::pair<Weight, std::vector<bool>>
-Graph<Weight, is_directed>::dinic(size_t src, size_t dst, Weight max) const {
-	struct DinicEdge {
-		size_t to;
-		Weight cap;
-	};
+Graph<Weight, is_directed>::dinic(size_t src, size_t dst, Weight lim) const {
+	static_assert(is_directed, "Dinic's algorithm for max flow and min cut"
+							   "is only applicable to directed graphs.");
 
-	std::vector<DinicEdge> dinic_edges;
-	dinic_edges.reserve(m_edges.size() << 1);
-	std::vector<std::vector<size_t>> dinic_adj(m_adj.size());
-	for (size_t i = 0; i < m_adj.size(); ++i) {
-		dinic_adj[i].reserve(m_adj[i].size() << 1);
-	}
+	std::vector<Weight> caps(m_edges.size() << 1);
 	std::vector<size_t> dep(m_adj.size()), iter(m_adj.size());
+	std::deque<size_t> q;
 
-	for (const auto &edge : m_edges) {
-		if (edge.u == edge.v) continue; // ignore self-loops
-		dinic_adj[edge.u].push_back(dinic_edges.size());
-		dinic_edges.push_back(DinicEdge{edge.v, edge.w});
-		dinic_adj[edge.v].push_back(dinic_edges.size());
-		dinic_edges.push_back(DinicEdge{edge.u, 0});
-	}
+	for (size_t i = 0; i < m_edges.size(); ++i) caps[i << 1] = m_edges[i].w;
 
-	auto bfs = [&]() -> bool {
+	auto bfs = [&]() -> void {
 		std::fill(dep.begin(), dep.end(), size_t(-1));
 		dep[src] = 0;
-		std::queue<size_t> q;
-		q.push(src);
+		q.clear();
+		q.push_back(src);
 
 		while (q.size()) {
 			auto frm = q.front();
-			q.pop();
-			for (auto i : dinic_adj[frm]) {
-				const auto &edge = dinic_edges[i];
-				if (!edge.cap || ~dep[edge.to]) continue;
-				dep[edge.to] = dep[frm] + 1;
-				q.push(edge.to);
+			q.pop_front();
+			for (size_t e : m_adj[frm]) {
+				size_t to;
+				if (m_edges[e].v != frm) {
+					to = m_edges[e].v, e <<= 1;
+				} else {
+					to = m_edges[e].u, e = ((e << 1) | 1);
+				}
+				if (!caps[e] || ~dep[to]) continue;
+				dep[to] = dep[frm] + 1;
+				if (to == dst) return;
+				q.push_back(to);
 			}
 		}
-		return ~dep[dst];
 	};
-	std::function<Weight(size_t, Weight)> dfs =
+	std::function<Weight(size_t, const Weight &)> dfs =
 		[&](size_t cur, const Weight &up) -> Weight {
 		if (cur == dst) return up;
-		for (size_t &i = iter[cur]; i != dinic_adj[cur].size(); ++i) {
-			auto &edge = dinic_edges[dinic_adj[cur][i]];
-			if (!edge.cap || dep[cur] >= dep[edge.to]) continue;
-			auto down = dfs(edge.to, std::min(up, edge.cap));
+
+		Weight flow = 0;
+		for (auto &i = iter[cur]; i != m_adj[cur].size(); ++i) {
+			size_t nxt, e = m_adj[cur][i];
+			if (m_edges[e].v != cur) {
+				nxt = m_edges[e].v, e = (e << 1);
+			} else {
+				nxt = m_edges[e].u, e = ((e << 1) | 1);
+			}
+			if (!caps[e] || dep[cur] >= dep[nxt]) continue;
+			auto down = dfs(nxt, std::min(up - flow, caps[e]));
 			if (!down) continue;
-			edge.cap -= down;
-			dinic_edges[dinic_adj[cur][i] ^ 1].cap += down;
-			return down;
+			flow += down;
+			caps[e] -= down, caps[e ^ 1] += down;
+			if (flow == up) return flow;
 		}
-		return 0;
+		dep[cur] = m_adj.size();
+		return flow;
 	};
 
 	Weight max_flow = 0;
-	while (bfs()) {
+	while (max_flow < lim) {
+		bfs();
+		if (dep[dst] == size_t(-1)) break;
 		std::fill(iter.begin(), iter.end(), 0);
-		Weight cur_flow;
-		while (cur_flow = dfs(src, max)) max_flow += cur_flow;
+		auto cur_flow = dfs(src, lim - max_flow);
+		if (!cur_flow) break;
+		max_flow += cur_flow;
 	}
 
 	std::vector<bool> min_cut(m_adj.size());
+	q.clear();
+	q.push_back(src);
 	min_cut[src] = true;
-	std::queue<size_t> q;
-	q.push(src);
 	while (q.size()) {
-		size_t frm = q.front();
-		q.pop();
-		for (auto i : dinic_adj[frm]) {
-			const auto &edge = dinic_edges[i];
-			if (!edge.cap || min_cut[edge.to]) continue;
-			min_cut[edge.to] = true;
-			q.push(edge.to);
+		auto frm = q.front();
+		q.pop_front();
+		for (size_t e : m_adj[frm]) {
+			size_t to;
+			if (m_edges[e].v != frm) {
+				to = m_edges[e].v, e <<= 1;
+			} else {
+				to = m_edges[e].u, e = ((e << 1) | 1);
+			}
+			if (caps[e] && !min_cut[to]) {
+				q.push_back(to);
+				min_cut[to] = true;
+			}
 		}
 	}
 
