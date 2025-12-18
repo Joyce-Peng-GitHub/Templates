@@ -780,6 +780,72 @@ std::vector<uint32_t> linearSieve(uint32_t max) {
 }
 \end{minted}
 
+\subsection{Euler's Totient Function}
+Euler's totient function $\varphi(n)$ of a positive integer $n$ is defined as
+$$
+\varphi(n)=\sum_{i=1}^{n}(\gcd(i,n)=1),
+$$
+i.e. the number of positive integers that are less than or equal to $n$ and coprime to $n$.
+
+Written in the form of Dirichlet convolution,
+Euler's totient function
+$$
+\varphi=\mathrm{id}*\mu,
+$$
+where $id:n\mapsto n$ and $\mu$ is the Möbius function.
+
+\begin{minted}{cpp}
+/**
+ * The Euler's totient function phi(n) is defined as the number of integers
+ * 	that are less than or equal to n and coprime to n.
+ * @brief Calculate phi(n) using the formula phi(n) = n * prod(1 - 1 / p_i)
+ * @return phi(n)
+ */
+uint64_t eulerFuncOf(uint64_t n) {
+	uint64_t res = n;
+	for (uint64_t i = 2; i * i <= n; ++i) {
+		if (n % i == 0) {
+			res = res / i * (i - 1);
+			do n /= i;
+			while (n % i == 0);
+		}
+	}
+	if (n > 1) res = res / n * (n - 1);
+	return res;
+}
+
+/**
+ * @return phi[0, max]
+ */
+std::vector<uint32_t> eulerFuncsOf(size_t max) {
+	if (max == 0) return {0};
+	if (max == 1) return {0, 1};
+
+	std::vector<bool> not_prime(max + 1);
+	std::vector<uint32_t> primes;
+	primes.reserve(3 * max / (floorLogn2(max) << 1)); // approximate number of primes
+	std::vector<uint32_t> phi(max + 1);
+
+	phi[1] = 1;
+	for (uint32_t i = 2; i <= max; ++i) {
+		if (!not_prime[i]) {
+			primes.emplace_back(i);
+			phi[i] = i - 1;
+		}
+		for (auto prime : primes) {
+			if (i * prime > max) break;
+			not_prime[i * prime] = true;
+			if (i % prime == 0) {
+				phi[i * prime] = phi[i] * prime;
+				break;
+			}
+			phi[i * prime] = phi[i] * (prime - 1);
+		}
+	}
+	return phi;
+}
+\end{minted}
+
 \subsection{Primality Test and Factorization}
 \begin{minted}{cpp}
 /**
