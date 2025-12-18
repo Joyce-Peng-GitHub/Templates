@@ -1650,6 +1650,59 @@ std::vector<uint32_t> linearSieve(uint32_t max) {
 }
 
 /**
+ * @brief linear sieve to generate primes and multiplicative function values
+ * @return tuple of (not_prime, primes, low, func_values)
+ * 	not_prime: bool array indicating whether i is not prime
+ * 	primes: list of all primes <= max
+ * 	low: low[i] = the largest power of the minimal prime factor of i that divides i
+ * 	func_values: func_values[i] = func applied on the prime factorization of i
+ * @tparam Ret return type of func
+ * @tparam Func function to generate multiplicative function values
+ * @param max maximum value to sieve
+ * @param func function with signature Ret(uint32_t prime, uint32_t prime_pow)
+ */
+template <typename Ret, typename Func>
+inline std::tuple<std::vector<bool>, std::vector<uint32_t>, std::vector<uint32_t>, std::vector<Ret>>
+linearSieve(uint32_t max, Func func = Func()) {
+	if (max == 0) return {{true}, {}, {0}, {Ret()}};
+
+	std::vector<bool> not_prime(max + 1);
+	std::vector<uint32_t> primes;
+	primes.reserve(max ? (3 * max / (floorLogn2(max) << 1)) : 0); // approximate number of primes
+	std::vector<uint32_t> low(max + 1);
+	std::vector<Ret> res(max + 1);
+
+	not_prime[0] = not_prime[1] = true;
+	low[1] = 1;
+	res[1] = func(1, 1);
+	for (uint32_t i = 2; i <= max; ++i) {
+		if (!not_prime[i]) {
+			primes.emplace_back(i);
+			low[i] = i;
+			res[i] = func(i, i);
+		}
+		for (auto prime : primes) {
+			auto x = i * prime;
+			if (x > max) break;
+			not_prime[x] = true;
+			if (i % prime) {
+				low[x] = prime;
+				res[x] = func(prime, prime) * res[i];
+			} else { // the minimal prime factor of x is prime
+				low[x] = low[i] * prime;
+				if (x == low[x]) {
+					res[x] = func(prime, x);
+				} else {
+					res[x] = res[low[x]] * res[x / low[x]];
+				}
+				break;
+			}
+		}
+	}
+	return {not_prime, primes, low, res};
+}
+
+/**
  * The Euler's totient function phi(n) is defined as the number of integers
  * 	that are less than or equal to n and coprime to n.
  * @brief Calculate phi(n) using the formula phi(n) = n * prod(1 - 1 / p_i)

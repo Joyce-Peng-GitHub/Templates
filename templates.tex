@@ -780,17 +780,78 @@ std::vector<uint32_t> linearSieve(uint32_t max) {
 }
 \end{minted}
 
+The linear sieve can be extended to generate values of any multiplicative function $f$.
+If $f(p^e)$ can be computed in $T(p,e)$ time,
+then the total time complexity to compute $f[1,n]$ is approximately
+$$
+	O(n)+O\left(\frac{n}{\ln n}T(n,1)\right).
+$$
+\begin{minted}{cpp}
+/**
+ * @brief linear sieve to generate primes and multiplicative function values
+ * @return tuple of (not_prime, primes, low, func_values)
+ * 	not_prime: bool array indicating whether i is not prime
+ * 	primes: list of all primes <= max
+ * 	low: low[i] = the largest power of the minimal prime factor of i that divides i
+ * 	func_values: func_values[i] = func applied on the prime factorization of i
+ * @tparam Ret return type of func
+ * @tparam Func function to generate multiplicative function values
+ * @param max maximum value to sieve
+ * @param func function with signature Ret(uint32_t prime, uint32_t prime_pow)
+ */
+template <typename Ret, typename Func>
+inline std::tuple<std::vector<bool>, std::vector<uint32_t>, std::vector<uint32_t>, std::vector<Ret>>
+linearSieve(uint32_t max, Func func = Func()) {
+	if (max == 0) return {{true}, {}, {0}, {Ret()}};
+
+	std::vector<bool> not_prime(max + 1);
+	std::vector<uint32_t> primes;
+	primes.reserve(max ? (3 * max / (floorLogn2(max) << 1)) : 0); // approximate number of primes
+	std::vector<uint32_t> low(max + 1);
+	std::vector<Ret> res(max + 1);
+
+	not_prime[0] = not_prime[1] = true;
+	low[1] = 1;
+	res[1] = func(1, 1);
+	for (uint32_t i = 2; i <= max; ++i) {
+		if (!not_prime[i]) {
+			primes.emplace_back(i);
+			low[i] = i;
+			res[i] = func(i, i);
+		}
+		for (auto prime : primes) {
+			auto x = i * prime;
+			if (x > max) break;
+			not_prime[x] = true;
+			if (i % prime) {
+				low[x] = prime;
+				res[x] = func(prime, prime) * res[i];
+			} else { // the minimal prime factor of x is prime
+				low[x] = low[i] * prime;
+				if (x == low[x]) {
+					res[x] = func(prime, x);
+				} else {
+					res[x] = res[low[x]] * res[x / low[x]];
+				}
+				break;
+			}
+		}
+	}
+	return {not_prime, primes, low, res};
+}
+\end{minted}
+
 \subsection{Euler's Totient Function}
 Euler's totient function $\varphi(n)$ of a positive integer $n$ is defined as
 $$
-\varphi(n)=\sum_{i=1}^{n}(\gcd(i,n)=1),
+	\varphi(n)=\sum_{i=1}^{n}(\gcd(i,n)=1),
 $$
 i.e. the number of positive integers that are less than or equal to $n$ and coprime to $n$.
 
 Written in the form of Dirichlet convolution,
 Euler's totient function
 $$
-\varphi=\mathrm{id}*\mu,
+	\varphi=\mathrm{id}*\mu,
 $$
 where $id:n\mapsto n$ and $\mu$ is the Möbius function.
 
@@ -1151,34 +1212,34 @@ inline size_t periodLength(Iter begin, Iter end) {
 \end{minted}
 
 \subsection{Suffix Array}
-Let $\Sigma$ be an alphabet, 
-and let $\vec s \in \Sigma^n \ (n \in \mathbb{N})$ be a string. 
-An array $\vec{sa} \in \mathbb{N}^n$ is called the *suffix array* of 
-the string $\vec s$ if and only if it satisfies that 
-for all $i \in \mathbb{N} \cap [0, n)$, 
+Let $\Sigma$ be an alphabet,
+and let $\vec s \in \Sigma^n \ (n \in \mathbb{N})$ be a string.
+An array $\vec{sa} \in \mathbb{N}^n$ is called the *suffix array* of
+the string $\vec s$ if and only if it satisfies that
+for all $i \in \mathbb{N} \cap [0, n)$,
 the suffix $s[sa_i, n)$ is the $i$-th lexicographically smallest suffix of $\vec s$.
-While computing the suffix array, 
-we also maintain a *rank array* $\vec{ra}$, 
-such that for any $i \in \mathbb{N} \cap [0, n)$, 
-$ra_i$ is the lexicographical rank of the suffix $s[i, n)$ among all suffixes of $\vec s$. 
+While computing the suffix array,
+we also maintain a *rank array* $\vec{ra}$,
+such that for any $i \in \mathbb{N} \cap [0, n)$,
+$ra_i$ is the lexicographical rank of the suffix $s[i, n)$ among all suffixes of $\vec s$.
 Thus, we have
 $$
-sa_{ra_i}=i=ra_{sa_i}
+	sa_{ra_i}=i=ra_{sa_i}
 $$
-Let $lcp(i,j)$ denote the length of the longest common prefix (LCP) 
-of the suffixes of $\vec s$ starting at $i$ and $j$, respectively. 
+Let $lcp(i,j)$ denote the length of the longest common prefix (LCP)
+of the suffixes of $\vec s$ starting at $i$ and $j$, respectively.
 The *height array* $\vec h \in \mathbb{N}^n$ is defined as
 $$
-\vec h=(lcp(sa_{i-1},sa_i))_{i=0}^{n-1}
+	\vec h=(lcp(sa_{i-1},sa_i))_{i=0}^{n-1}
 $$
-That is, $h_i$ is the LCP length of the suffix with rank $i$ 
-and the suffix ranked just before it (rank $i-1$). 
+That is, $h_i$ is the LCP length of the suffix with rank $i$
+and the suffix ranked just before it (rank $i-1$).
 Specifically, we define $h_0=0$.
 Consequently,
 $$
-h_{ra_i}=lcp(sa_{ra_i},sa_{ra_i-1})=lcp(i,sa_{ra_i-1})
+	h_{ra_i}=lcp(sa_{ra_i},sa_{ra_i-1})=lcp(i,sa_{ra_i-1})
 $$
-In other words, $h_{ra_i}$ is the LCP length of the suffix 
+In other words, $h_{ra_i}$ is the LCP length of the suffix
 starting at $i$ and the suffix that is lexicographically ranked just before it.
 
 \textbf{LCP Lemma:} $h_{ra_i}\geq h_{ra_{i-1}}-1$.
