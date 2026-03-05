@@ -450,6 +450,196 @@ protected:
 private:
 };
 
+template <typename T, typename Cmp = std::less<T>>
+class LeftistHeap {
+public:
+	struct Node {
+		Node *prt = nullptr;
+		std::unique_ptr<Node> lch, rch;
+		ptrdiff_t dist = 0;
+		T val;
+
+		Node() = default;
+		explicit Node(const T &val) : val(val) {}
+		explicit Node(T &&val) : val(std::move(val)) {}
+		template <typename U, typename... Args,
+				  typename = std::enable_if_t<!std::is_same_v<std::decay_t<U>, Node>>>
+		Node(U &&u, Args &&...args) : val(std::forward<U>(u), std::forward<Args>(args)...) {}
+		Node(const Node &other)
+			: prt(other.prt),
+			  lch(other.lch ? std::make_unique<Node>(*other.lch) : nullptr),
+			  rch(other.rch ? std::make_unique<Node>(*other.rch) : nullptr),
+			  dist(other.dist), val(other.val) {
+			if (lch) lch->prt = this;
+			if (rch) rch->prt = this;
+		}
+		Node(Node &&other) = delete;
+		Node &operator=(const Node &other) {
+			if (this == &other) return *this;
+
+			prt = other.prt;
+			lch = (other.lch ? std::make_unique<Node>(*other.lch) : nullptr);
+			if (lch) lch->prt = this;
+			rch = (other.rch ? std::make_unique<Node>(*other.rch) : nullptr);
+			if (rch) rch->prt = this;
+			dist = other.dist;
+			val = other.val;
+			return *this;
+		}
+		Node &operator=(Node &&) = delete;
+	};
+
+	explicit LeftistHeap(Cmp cmp = Cmp()) : m_sz(0), m_cmp(cmp) {}
+	explicit LeftistHeap(const T &val, Cmp cmp = Cmp())
+		: m_rt(std::make_unique<Node>(val)), m_sz(1), m_cmp(cmp) {}
+	template <typename Iter, typename = RequireInputIter<Iter>>
+	LeftistHeap(Iter beg, Iter end, Cmp cmp = Cmp()) : m_cmp(cmp) {
+		std::queue<UniquePointer> q;
+		for (; beg != end; ++beg) q.emplace(std::make_unique<Node>(*beg));
+		m_sz = q.size();
+		if (q.empty()) return;
+
+		while (q.size() > 1) {
+			auto p = std::move(q.front());
+			q.pop();
+			q.emplace(m_merge(std::move(p), std::move(q.front())));
+			q.pop();
+		}
+
+		m_rt = std::move(q.front());
+		m_rt->prt = nullptr;
+	}
+	LeftistHeap(const LeftistHeap &other)
+		: m_rt(other.m_rt ? std::make_unique<Node>(*other.m_rt) : nullptr),
+		  m_sz(other.m_sz),
+		  m_cmp(other.m_cmp) {}
+	LeftistHeap(LeftistHeap &&other) noexcept
+		: m_rt(std::move(other.m_rt)), m_sz(other.m_sz), m_cmp(std::move(other.m_cmp)) {
+		other.m_sz = 0;
+	}
+	LeftistHeap &operator=(const LeftistHeap &other) {
+		if (this == &other) return *this;
+		m_cmp = other.m_cmp;
+		m_rt = (other.m_rt ? std::make_unique<Node>(*other.m_rt) : nullptr);
+		m_sz = other.m_sz;
+		return *this;
+	}
+	LeftistHeap &operator=(LeftistHeap &&other) noexcept {
+		if (this != &other) {
+			m_cmp = std::move(other.m_cmp);
+			m_rt = std::move(other.m_rt);
+			m_sz = other.m_sz;
+			other.m_sz = 0;
+		}
+		return *this;
+	}
+
+	const T &top() const noexcept {
+		assert(m_rt);
+		return m_rt->val;
+	}
+	bool empty() const noexcept { return !m_rt; }
+	size_t size() const noexcept { return m_sz; }
+
+	Node *push(const T &val) {
+		auto new_node = std::make_unique<Node>(val);
+		Node *p = new_node.get();
+		m_rt = m_merge(std::move(m_rt), std::move(new_node));
+		++m_sz;
+		return p;
+	}
+
+	Node *push(T &&val) {
+		auto new_node = std::make_unique<Node>(std::move(val));
+		Node *p = new_node.get();
+		m_rt = m_merge(std::move(m_rt), std::move(new_node));
+		++m_sz;
+		return p;
+	}
+
+	template <typename... Args>
+	Node *emplace(Args &&...args) {
+		auto new_node = std::make_unique<Node>(std::forward<Args>(args)...);
+		Node *p = new_node.get();
+		m_rt = m_merge(std::move(m_rt), std::move(new_node));
+		++m_sz;
+		return p;
+	}
+
+	void pop() {
+		assert(m_rt);
+		m_rt = m_merge(std::move(m_rt->lch), std::move(m_rt->rch));
+		--m_sz;
+	}
+
+	void merge(LeftistHeap &&other) {
+		if (this == &other) return;
+		m_sz += other.m_sz;
+		other.m_sz = 0;
+		m_rt = m_merge(std::move(m_rt), std::move(other.m_rt));
+	}
+
+	static LeftistHeap merge(LeftistHeap &&x, LeftistHeap &&y) {
+		x.merge(std::move(y));
+		return std::move(x);
+	}
+
+	void erase(Node *p) {
+		assert(p);
+		auto ch = m_merge(std::move(p->lch), std::move(p->rch));
+		if (ch) ch->prt = p->prt;
+		--m_sz;
+
+		Node *prt = p->prt;
+		if (!prt) {
+			m_rt = std::move(ch);
+			return;
+		}
+		p->prt = nullptr;
+		((prt->lch.get() == p) ? prt->lch : prt->rch) = std::move(ch);
+		m_pushUp(prt);
+	}
+
+protected:
+	using UniquePointer = std::unique_ptr<Node>;
+
+	static ptrdiff_t s_distOf(const UniquePointer &p) noexcept {
+		return (p ? p->dist : -1);
+	}
+
+	UniquePointer m_rt;
+	size_t m_sz;
+	Cmp m_cmp;
+
+	UniquePointer m_merge(UniquePointer p, UniquePointer q) {
+		if (!p && !q) return nullptr;
+		if (p && q) {
+			if (m_cmp(p->val, q->val)) std::swap(p, q);
+			p->rch = m_merge(std::move(p->rch), std::move(q));
+			p->rch->prt = p.get();
+			if (s_distOf(p->lch) < s_distOf(p->rch)) std::swap(p->lch, p->rch);
+			p->dist = s_distOf(p->rch) + 1;
+		} else if (q) {
+			p = std::move(q);
+		}
+		p->prt = nullptr;
+		return p;
+	}
+
+	void m_pushUp(Node *cur) noexcept {
+		for (; cur; cur = cur->prt) {
+			if (s_distOf(cur->lch) < s_distOf(cur->rch)) {
+				std::swap(cur->lch, cur->rch);
+			}
+			auto new_dist = s_distOf(cur->rch) + 1;
+			if (cur->dist == new_dist) break;
+			cur->dist = new_dist;
+		}
+	}
+
+private:
+};
+
 template <typename T>
 class Deque {
 public:
