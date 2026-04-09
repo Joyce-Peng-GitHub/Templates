@@ -2310,7 +2310,7 @@ public:
 	std::vector<Weight> bellmanFord(size_t src) const;
 	std::vector<Weight> spfa(size_t src) const;
 
-	std::pair<Weight, std::vector<bool>>
+	std::tuple<Weight, std::vector<bool>, std::vector<Weight>>
 	dinic(size_t src, size_t dst,
 		  Weight lim = std::numeric_limits<Weight>::max()) const;
 
@@ -2795,19 +2795,29 @@ shortestHamiltonianPath(const std::vector<std::vector<Weight>> &adj_mat,
 }
 
 /**
- * @return {max flow, min cut} from src to dst
+ * @return {max flow, min cut, flows} from src to dst
+ * min_cut[i] == true iff i is in the sink partition.
+ * flows[i] is net flow from edges[i].u to edge[i].v.
+ *
+ * @note Time complexity:
+ * - General networks: O(|V|^2 * |E|).
+ * - Unit capacity networks (e.g., bipartite matching): O(|E| * sqrt(|V|)).
+ * - Networks where all edge capacities are 1, and every node (except src/dst)
+ * has either in-degree 1 or out-degree 1: O(|E| * min(|V|^{2/3}, sqrt(|E|))).
+ * In practice, Dinic's algorithm is extremely efficient and typically runs
+ * much faster than its theoretical worst-case upper bound on real-world graphs.
  */
 template <typename Weight, bool is_directed>
-std::pair<Weight, std::vector<bool>>
+std::tuple<Weight, std::vector<bool>, std::vector<Weight>>
 Graph<Weight, is_directed>::dinic(size_t src, size_t dst, Weight lim) const {
-	static_assert(is_directed, "Dinic's algorithm for max flow and min cut"
-							   "is only applicable to directed graphs.");
-
 	std::vector<Weight> caps(m_edges.size() << 1);
 	std::vector<size_t> dep(m_adj.size()), iter(m_adj.size());
 	std::deque<size_t> q;
 
-	for (size_t i = 0; i < m_edges.size(); ++i) caps[i << 1] = m_edges[i].w;
+	for (size_t e = 0; e < m_edges.size(); ++e) caps[e << 1] = m_edges[e].w;
+	if (!is_directed) {
+		for (size_t e = 0; e < m_edges.size(); ++e) caps[(e << 1) | 1] = m_edges[e].w;
+	}
 
 	auto bfs = [&]() -> void {
 		std::fill(dep.begin(), dep.end(), size_t(-1));
@@ -2865,26 +2875,29 @@ Graph<Weight, is_directed>::dinic(size_t src, size_t dst, Weight lim) const {
 		max_flow += cur_flow;
 	}
 
-	std::vector<bool> min_cut(m_adj.size());
+	std::vector<bool> min_cut(m_adj.size(), true);
 	q.clear();
 	q.push_back(src);
-	min_cut[src] = true;
+	min_cut[src] = false;
 	while (q.size()) {
 		auto frm = q.front();
 		q.pop_front();
 		for (size_t e : m_adj[frm]) {
 			size_t to;
 			if (m_edges[e].v != frm) {
-				to = m_edges[e].v, e <<= 1;
+				to = m_edges[e].v, e = (e << 1);
 			} else {
 				to = m_edges[e].u, e = ((e << 1) | 1);
 			}
-			if (caps[e] && !min_cut[to]) {
+			if (caps[e] && min_cut[to]) {
 				q.push_back(to);
-				min_cut[to] = true;
+				min_cut[to] = false;
 			}
 		}
 	}
 
-	return std::make_pair(max_flow, std::move(min_cut));
+	std::vector<Weight> flows(m_edges.size());
+	for (size_t e = 0; e < m_edges.size(); ++e) flows[e] = m_edges[e].w - caps[e << 1];
+
+	return std::make_tuple(max_flow, std::move(min_cut), std::move(flows));
 }
