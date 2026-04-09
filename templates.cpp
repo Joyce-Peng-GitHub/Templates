@@ -1424,105 +1424,101 @@ struct unordered_trie_multiset {
 	}
 };
 
-template <typename T, typename Oper = std::plus<T>,
-		  typename Seq = std::vector<T>>
+template <typename T, typename Oper = std::plus<T>, T id_elem = T()>
 class FenwickTree {
 public:
-	static size_t lowbit(size_t x) noexcept { return (x & (-x)); }
+	inline static size_t lowbit(size_t x) { return (x & (-x)); }
 
-	/**
-	 * @pre Oper must be a commutative monoid operator on T.
-	 *
-	 * @note O(n) time complexity.
-	 */
-	explicit FenwickTree(Seq arr = Seq(), Oper oper = Oper())
-		: m_arr(std::move(arr)), m_tree(m_arr), m_oper(std::move(oper)) {
+	inline explicit FenwickTree(size_t n = 0) : m_tree(n + 1, id_elem) {}
+	inline explicit FenwickTree(std::initializer_list<T> list) : m_tree(list) {
 		m_build();
 	}
-	void assign(Seq arr = Seq(), Oper oper = Oper()) {
-		m_arr = std::move(arr);
-		m_tree = m_arr;
-		m_oper = std::move(oper);
+	inline FenwickTree(size_t n, const T &value) : m_tree(n + 1, value) {
+		m_tree.front() = id_elem;
+		m_build();
+	}
+	template <typename Iter, typename = RequireInputIter<Iter>>
+	inline FenwickTree(Iter begin, Iter end)
+		: m_tree(std::distance(begin, end) + 1) {
+		m_tree.front() = id_elem;
+		std::copy(begin, end, m_tree.begin() + 1);
 		m_build();
 	}
 
-	size_t size() const noexcept { return m_tree.size(); }
-	bool empty() const noexcept { return m_tree.empty(); }
-	const Seq &tree() const noexcept { return m_tree; }
-	const Seq &data() const { return m_arr; }
+	inline size_t treeSize() const { return m_tree.size(); }
+	inline size_t size() const { return (m_tree.size() - 1); }
 
-	const T &get(size_t idx) const noexcept {
-		assert(idx < size());
-		return m_arr[idx];
-	}
-	const T &operator[](size_t idx) const noexcept { return get(idx); }
-	/**
-	 * @brief Set the value at position `idx` to `val`.
-	 * For cancellative operators, it's better to use
-	 * `modify(idx, val - get(idx))`, which can be done in O(log(size())) time.
-	 *
-	 * @note O(log(size())^2) time complexity.
-	 */
-	void set(size_t idx, const T &val) {
-		assert(idx < size());
-		m_arr[idx] = val;
-		for (++idx; idx <= size(); idx += lowbit(idx)) {
-			m_tree[idx - 1] = m_arr[idx - 1];
-			for (size_t i = 1; i < lowbit(idx); i <<= 1) {
-				m_tree[idx - 1] = m_oper(m_tree[idx - 1], m_tree[idx - i - 1]);
-			}
+	inline void resize(size_t n, const T &val = id_elem) {
+		if ((++n) <= m_tree.size()) {
+			m_tree.resize(n);
+		} else {
+			size_t old_sz = m_tree.size();
+			m_tree.resize(n, val);
+			m_rebuild(old_sz);
 		}
 	}
+
+	inline void assign(std::initializer_list<T> list) {
+		assign(list.begin(), list.end());
+	}
+	inline void assign(size_t n = 0) { m_tree.assign(n + 1, id_elem); }
+	inline void assign(size_t n, const T &value) {
+		m_tree.assign(n + 1, value);
+		m_tree.front() = id_elem;
+		m_build();
+	}
+	template <typename Iter, typename = RequireInputIter<Iter>>
+	inline void assign(Iter begin, Iter end) {
+		m_tree.resize(std::distance(begin, end) + 1);
+		std::copy(begin, end, m_tree.begin() + 1);
+		m_build();
+	}
+
 	/**
-	 * @brief Modify the value at position `idx` by `diff`.
-	 *
-	 * @note If you want to use custom modifiers instead of the monoid operator,
-	 * e.g. increase a value in a max Fenwick tree,
-	 * you can call `set(idx, modifier(get(idx), diff))` instead,
-	 * which can be done in O(log(size())^2) time.
-	 *
-	 * @note O(log(size())) time complexity.
+	 * @brief add diff to the element at index
 	 */
-	void modify(size_t idx, const T &diff) {
-		assert(idx < size());
-		m_arr[idx] = m_oper(m_arr[idx], diff);
-		for (++idx; idx <= size(); idx += lowbit(idx)) {
-			m_tree[idx - 1] = m_oper(m_tree[idx - 1], diff);
+	inline void modify(size_t index, const T &diff) {
+		m_range_check(index);
+		for (++index; index < m_tree.size(); index += lowbit(index)) {
+			m_tree[index] = m_oper(m_tree[index], diff);
 		}
 	}
 
 	/**
-	 * @brief Query the sum of the subarray [pos, pos + len).
-	 *
-	 * @param id The identity element of the monoid.
-	 *
-	 * @note O(log(size())) time complexity.
+	 * @return the sum of [0, min(n, size()))
 	 */
-	T query(size_t pos, size_t len, T id = T()) const {
-		assert(pos <= size());
-		len = std::min(len, size() - pos);
-		size_t l = pos + 1, r = pos + len;
-		while (l <= r) {
-			if (r - lowbit(r) + 1 >= l) {
-				id = m_oper(id, m_tree[r - 1]);
-				r -= lowbit(r);
-			} else {
-				id = m_oper(id, m_arr[r - 1]);
-				--r;
-			}
-		}
-		return id;
+	inline T query(size_t n = -1) const {
+		if (n >= m_tree.size()) n = m_tree.size() - 1;
+		T res = id_elem;
+		for (; n; n -= lowbit(n)) res = m_oper(res, m_tree[n]);
+		return res;
 	}
+	inline T operator[](size_t n) const { return query(n); }
 
 protected:
-	Seq m_arr, m_tree;
+	std::vector<T> m_tree; // m_tree[i] maintains the sum of data[i - lowbit(i), i)
 	Oper m_oper;
 
-	void m_build() {
-		for (size_t i = 1; i <= size(); ++i) {
-			size_t j = i + lowbit(i);
-			if (j > size()) continue;
-			m_tree[j - 1] = m_oper(m_tree[j - 1], m_tree[i - 1]);
+	inline void m_range_check(size_t index) const {
+		if (index + 1 >= m_tree.size()) {
+			std::__throw_out_of_range_fmt(__N("FenwickTree::__range_check: index "
+											  "(which is %zu) >= this->size() "
+											  "(which is %zu)"),
+										  index, m_tree.size() - 1);
+		}
+	}
+	inline void m_build() {
+		for (size_t i = 1, j; i < m_tree.size(); ++i) {
+			j = i + lowbit(i);
+			if (j < m_tree.size()) m_tree[j] = m_oper(m_tree[j], m_tree[i]);
+		}
+	}
+	inline void m_rebuild(size_t old_tree_sz) {
+		for (size_t i = 1, j; i < m_tree.size(); ++i) {
+			j = i + lowbit(i);
+			if (j >= old_tree_sz && j < m_tree.size()) {
+				m_tree[j] = m_oper(m_tree[j], m_tree[i]);
+			}
 		}
 	}
 };
@@ -2314,7 +2310,7 @@ public:
 	std::vector<Weight> bellmanFord(size_t src) const;
 	std::vector<Weight> spfa(size_t src) const;
 
-	std::tuple<Weight, std::vector<bool>, std::vector<Weight>>
+	std::pair<Weight, std::vector<bool>>
 	dinic(size_t src, size_t dst,
 		  Weight lim = std::numeric_limits<Weight>::max()) const;
 
@@ -2799,22 +2795,19 @@ shortestHamiltonianPath(const std::vector<std::vector<Weight>> &adj_mat,
 }
 
 /**
- * @return {max flow, min cut, flows} from src to dst
- * 
- * min_cut[i] == true iff i is in the sink partition.
- * flows[i] is net flow from edges[i].u to edge[i].v.
+ * @return {max flow, min cut} from src to dst
  */
 template <typename Weight, bool is_directed>
-std::tuple<Weight, std::vector<bool>, std::vector<Weight>>
+std::pair<Weight, std::vector<bool>>
 Graph<Weight, is_directed>::dinic(size_t src, size_t dst, Weight lim) const {
+	static_assert(is_directed, "Dinic's algorithm for max flow and min cut"
+							   "is only applicable to directed graphs.");
+
 	std::vector<Weight> caps(m_edges.size() << 1);
 	std::vector<size_t> dep(m_adj.size()), iter(m_adj.size());
 	std::deque<size_t> q;
 
-	for (size_t e = 0; e < m_edges.size(); ++e) caps[e << 1] = m_edges[e].w;
-	if (!is_directed) {
-		for (size_t e = 0; e < m_edges.size(); ++e) caps[(e << 1) | 1] = m_edges[e].w;
-	}
+	for (size_t i = 0; i < m_edges.size(); ++i) caps[i << 1] = m_edges[i].w;
 
 	auto bfs = [&]() -> void {
 		std::fill(dep.begin(), dep.end(), size_t(-1));
@@ -2872,29 +2865,26 @@ Graph<Weight, is_directed>::dinic(size_t src, size_t dst, Weight lim) const {
 		max_flow += cur_flow;
 	}
 
-	std::vector<bool> min_cut(m_adj.size(), true);
+	std::vector<bool> min_cut(m_adj.size());
 	q.clear();
 	q.push_back(src);
-	min_cut[src] = false;
+	min_cut[src] = true;
 	while (q.size()) {
 		auto frm = q.front();
 		q.pop_front();
 		for (size_t e : m_adj[frm]) {
 			size_t to;
 			if (m_edges[e].v != frm) {
-				to = m_edges[e].v, e = (e << 1);
+				to = m_edges[e].v, e <<= 1;
 			} else {
 				to = m_edges[e].u, e = ((e << 1) | 1);
 			}
-			if (caps[e] && min_cut[to]) {
+			if (caps[e] && !min_cut[to]) {
 				q.push_back(to);
-				min_cut[to] = false;
+				min_cut[to] = true;
 			}
 		}
 	}
 
-	std::vector<Weight> flows(m_edges.size());
-	for (size_t e = 0; e < m_edges.size(); ++e) flows[e] = m_edges[e].w - caps[e << 1];
-
-	return std::make_tuple(max_flow, std::move(min_cut), std::move(flows));
+	return std::make_pair(max_flow, std::move(min_cut));
 }
