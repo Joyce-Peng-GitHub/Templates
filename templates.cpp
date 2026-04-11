@@ -1625,8 +1625,10 @@ discretize(Iter begin, Iter end, std::vector<size_t> &res,
 }
 
 /**
- * @return indices of elements consisting
- * 	one longest increasing subsequence of [@param begin, @param end)
+ * @return indices of elements consisting one longest increasing subsequence of
+ * [@param begin, @param end).
+ * 
+ * @note O(n log n) time complexity.
  */
 template <typename Iter,
 		  typename Cmp = std::less<typename std::iterator_traits<Iter>::value_type>,
