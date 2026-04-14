@@ -743,11 +743,9 @@ public:
 	explicit ZkwSegTree(const std::vector<T> &arr,
 						Oper oper = Oper(), T id = T())
 		: m_sz(arr.size()), m_leaf_num(leafNumOf(arr.size())),
+		  m_tree(m_leaf_num << 1, id),
 		  m_oper(std::move(oper)), m_id(std::move(id)) {
-		m_tree.reserve(m_leaf_num << 1);
-		m_tree.insert(m_tree.end(), m_leaf_num, id);
-		m_tree.insert(m_tree.end(), arr.begin(), arr.end());
-		m_tree.insert(m_tree.end(), m_leaf_num - m_sz, id);
+		std::copy(arr.begin(), arr.end(), m_tree.begin() + m_leaf_num);
 		for (size_t i = m_leaf_num - 1; i; --i) m_pushUp(i);
 	}
 	void assign(size_t n, Oper oper = Oper(), T id = T()) {
@@ -756,6 +754,15 @@ public:
 		m_tree.assign(m_leaf_num << 1, id);
 		m_oper = std::move(oper);
 		m_id = std::move(id);
+	}
+	void assign(const std::vector<T> &arr, Oper oper = Oper(), T id = T()) {
+		m_sz = arr.size();
+		m_leaf_num = leafNumOf(arr.size());
+		m_tree.assign(m_leaf_num << 1, id);
+		std::copy(arr.begin(), arr.end(), m_tree.begin() + m_leaf_num);
+		m_oper = std::move(oper);
+		m_id = std::move(id);
+		for (size_t i = m_leaf_num - 1; i; --i) m_pushUp(i);
 	}
 
 	size_t size() const noexcept { return m_sz; }
