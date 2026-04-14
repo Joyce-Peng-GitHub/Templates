@@ -1527,81 +1527,158 @@ protected:
 	}
 };
 
-/**
- * @todo Make it a template!
- */
-class SegTree {
+template <typename T, typename Oper = std::plus<T>>
+class ZkwSegTree {
 public:
-	SegTree(size_t sz) : m_sz(sz) {}
+	static size_t leafNumOf(size_t n) {
+		return (n ? (size_t(1) << ceilLogn2(n)) : 1);
+	}
+	static size_t lowbit(size_t x) { return (x & (-x)); }
+	static size_t leftChildOf(size_t rt) { return (rt << 1); }
+	static size_t rightChildOf(size_t rt) { return ((rt << 1) | 1); }
 
-	inline void modify(size_t pos, size_t len, int64_t diff) {
-		m_modify(&m_rt, 0, m_sz, pos, pos + len, diff);
+	/**
+	 * @pre `oper` must be a monoid operator on `T` with identity element `id`.
+	 */
+	explicit ZkwSegTree(size_t n = 0, Oper oper = Oper(), T id = T())
+		: m_sz(n), m_leaf_num(leafNumOf(n)),
+		  m_tree(m_leaf_num << 1, id),
+		  m_oper(std::move(oper)), m_id(std::move(id)) {}
+	explicit ZkwSegTree(const std::vector<T> &arr,
+						Oper oper = Oper(), T id = T())
+		: m_sz(arr.size()), m_leaf_num(leafNumOf(arr.size())),
+		  m_oper(std::move(oper)), m_id(std::move(id)) {
+		m_tree.reserve(m_leaf_num << 1);
+		m_tree.insert(m_tree.end(), m_leaf_num, id);
+		m_tree.insert(m_tree.end(), arr.begin(), arr.end());
+		m_tree.insert(m_tree.end(), m_leaf_num - m_sz, id);
+		for (size_t i = m_leaf_num - 1; i; --i) m_pushUp(i);
+	}
+	void assign(size_t n, Oper oper = Oper(), T id = T()) {
+		m_sz = n;
+		m_leaf_num = leafNumOf(n);
+		m_tree.assign(m_leaf_num << 1, id);
+		m_oper = std::move(oper);
+		m_id = std::move(id);
 	}
 
-	inline int64_t query(size_t pos, size_t len) {
-		return m_query(&m_rt, 0, m_sz, pos, pos + len);
+	size_t size() const noexcept { return m_sz; }
+	size_t leafNum() const noexcept { return m_leaf_num; }
+	bool empty() const noexcept { return !m_sz; }
+
+	const T &get(size_t pos) const {
+		assert(pos < m_sz);
+		return m_tree[m_leaf_num + pos];
+	}
+	const T &operator[](size_t pos) const { return get(pos); }
+	/**
+	 * @note `O(log(size()))` time complexity.
+	 */
+	void set(size_t pos, const T &val) {
+		assert(pos < m_sz);
+		pos += m_leaf_num;
+		m_tree[pos] = val;
+		for (pos >>= 1; pos; pos >>= 1) m_pushUp(pos);
+	}
+
+	/**
+	 * @note `O(log(size()))` time complexity.
+	 */
+	T query(size_t pos, size_t len) const {
+		assert(pos <= m_sz);
+		len = std::min(len, m_sz - pos);
+
+		if (pos == 0 && len == m_sz) return m_tree[1];
+
+		T ls = m_id, rs = m_id;
+		for (size_t l = pos + m_leaf_num, r = pos + len + m_leaf_num;
+			 l < r;
+			 l >>= 1, r >>= 1) {
+			if (l & 1) ls = m_oper(ls, m_tree[l++]);
+			if (r & 1) rs = m_oper(m_tree[--r], rs);
+		}
+		return m_oper(ls, rs);
+	}
+
+	/**
+	 * @pre `pred(id) == true`.
+	 *
+	 * @return `beg` in `[0, end]` s.t.
+	 * - `pred(query(beg, end - beg)) == true`;
+	 * - `beg == 0 || pred(query(beg - 1, end - beg + 1)) == false`.
+	 * If `pred` is monotone, this is the minimum `beg` in [0, end] s.t.
+	 * `pred(query(beg, end - beg)) == true`.
+	 *
+	 * @note `O(log(size()))` time complexity.
+	 */
+	template <typename Pred>
+	size_t minLeft(size_t end, Pred pred = Pred()) const {
+		assert(end <= m_sz);
+		if (!end) return 0;
+		end += m_leaf_num;
+		T s = m_id;
+		do {
+			--end;
+			while (end > 1 && (end & 1)) end >>= 1;
+			if (!pred(m_oper(m_tree[end], s))) {
+				while (end < m_leaf_num) {
+					end = rightChildOf(end);
+					if (pred(m_oper(m_tree[end], s))) {
+						s = m_oper(m_tree[end], s);
+						--end;
+					}
+				}
+				return (end - m_leaf_num + 1);
+			}
+			s = m_oper(m_tree[end], s);
+		} while (lowbit(end) != end);
+		return 0;
+	}
+
+	/**
+	 * @pre `pred(id) == true`.
+	 *
+	 * @return `end` in `[beg, size()]` s.t.
+	 * - `pred(query(beg, end - beg)) == true`;
+	 * - `end == size() || pred(query(beg, end + 1 - beg)) == false`.
+	 * If `pred` is monotone, this is the maximum `end` in [beg, size()] s.t.
+	 * `pred(query(beg, end - beg)) == true`.
+	 *
+	 * @note `O(log(size()))` time complexity.
+	 */
+	template <typename Pred>
+	size_t maxRight(size_t beg, Pred pred = Pred()) const {
+		assert(beg <= m_sz);
+		if (beg == m_sz) return m_sz;
+		beg += m_leaf_num;
+		T s = m_id;
+		do {
+			while (((beg & 1) == 0)) beg >>= 1;
+			if (!pred(m_oper(s, m_tree[beg]))) {
+				while (beg < m_leaf_num) {
+					beg = leftChildOf(beg);
+					if (pred(m_oper(s, m_tree[beg]))) {
+						s = m_oper(s, m_tree[beg]);
+						++beg;
+					}
+				}
+				return std::min(m_sz, beg - m_leaf_num);
+			}
+			s = m_oper(s, m_tree[beg]);
+			++beg;
+		} while (lowbit(beg) != beg);
+		return m_sz;
 	}
 
 protected:
-	struct Node {
-		int64_t val = 0, lzy = 0;
-		Node *lch = nullptr, *rch = nullptr;
+	size_t m_sz, m_leaf_num;
+	std::vector<T> m_tree;
+	Oper m_oper;
+	T m_id;
 
-		inline void pushDown() {
-			if (!lch) {
-				lch = new Node({.lzy = lzy});
-			} else {
-				lch->lzy += lzy;
-			}
-			if (!rch) {
-				rch = new Node({.lzy = lzy});
-			} else {
-				rch->lzy += lzy;
-			}
-			lzy = 0;
-		}
-
-		~Node() {
-			if (lch) delete lch;
-			if (rch) delete rch;
-		}
-	};
-
-	Node m_rt;
-	size_t m_sz;
-
-	void m_modify(Node *p, size_t nd_beg, size_t nd_end, size_t beg, size_t end, int64_t diff) {
-		assert(nd_beg <= beg && beg < end && end <= nd_end);
-		p->val += (end - beg) * diff;
-		if (nd_beg == beg && nd_end == end) {
-			p->lzy += diff;
-			return;
-		}
-		p->pushDown();
-		size_t nd_mid = nd_beg + ((nd_end - nd_beg) >> 1);
-		if (beg < nd_mid) {
-			m_modify(p->lch, nd_beg, nd_mid, beg, std::min(end, nd_mid), diff);
-		}
-		if (end > nd_mid) {
-			m_modify(p->rch, nd_mid, nd_end, std::max(beg, nd_mid), end, diff);
-		}
+	void m_pushUp(size_t rt) {
+		m_tree[rt] = m_oper(m_tree[leftChildOf(rt)], m_tree[rightChildOf(rt)]);
 	}
-
-	int64_t m_query(Node *p, size_t nd_beg, size_t nd_end, size_t beg, size_t end) {
-		assert(nd_beg <= beg && beg < end && end <= nd_end);
-		if (nd_beg == beg && nd_end == end) return p->val;
-		int64_t res = (end - beg) * p->lzy;
-		size_t nd_mid = nd_beg + ((nd_end - nd_beg) >> 1);
-		if (beg < nd_mid && p->lch) {
-			res += m_query(p->lch, nd_beg, nd_mid, beg, std::min(end, nd_mid));
-		}
-		if (end > nd_mid && p->rch) {
-			res += m_query(p->rch, nd_mid, nd_end, std::max(beg, nd_mid), end);
-		}
-		return res;
-	}
-
-private:
 };
 
 /**
