@@ -1449,7 +1449,7 @@ public:
 	size_t size() const noexcept { return m_tree.size(); }
 	bool empty() const noexcept { return m_tree.empty(); }
 	const Seq &tree() const noexcept { return m_tree; }
-	const Seq &data() const { return m_arr; }
+	const Seq &data() const noexcept { return m_arr; }
 
 	const T &get(size_t idx) const noexcept {
 		assert(idx < size());
@@ -1477,7 +1477,7 @@ public:
 	 * @brief Modify the value at position `idx` by `diff`.
 	 *
 	 * @note If you want to use custom modifiers instead of the monoid operator,
-	 * e.g. increase a value in a max Fenwick tree,
+	 * e.g. decrease a value in a max Fenwick tree,
 	 * you can call `set(idx, modifier(get(idx), diff))` instead,
 	 * which can be done in O(log(size())^2) time.
 	 *
@@ -1605,11 +1605,14 @@ private:
 };
 
 /**
- * @return sorted unique elements
+ * @return sorted unique elements.
+ *
+ * @note O(n log n) time complexity.
  */
 template <typename Iter,
 		  typename Cmp = std::less<typename std::iterator_traits<Iter>::value_type>,
-		  typename Eq = std::equal_to<typename std::iterator_traits<Iter>::value_type>>
+		  typename Eq = std::equal_to<typename std::iterator_traits<Iter>::value_type>,
+		  typename = RequireFwdIter<Iter>>
 inline std::vector<typename std::iterator_traits<Iter>::value_type>
 discretize(Iter begin, Iter end, std::vector<size_t> &res,
 		   Cmp cmp = Cmp(), Eq eq = Eq()) {
@@ -1627,7 +1630,7 @@ discretize(Iter begin, Iter end, std::vector<size_t> &res,
 /**
  * @return indices of elements consisting one longest increasing subsequence of
  * [@param begin, @param end).
- * 
+ *
  * @note O(n log n) time complexity.
  */
 template <typename Iter,
@@ -1659,7 +1662,11 @@ std::vector<size_t> longestIncrSubseq(Iter begin, Iter end, Cmp cmp = Cmp()) {
 }
 
 /**
- * @return the rank of arr in all its permutation
+ * @pre arr.size() <= 20.
+ *
+ * @return the rank (0-indexed) of arr in all its permutation.
+ *
+ * @note O(n log n) time complexity.
  */
 template <typename T, typename Cmp = std::less<T>, typename Eq = std::equal_to<T>>
 uint64_t cantorExpand(const std::vector<T> &arr,
@@ -1667,12 +1674,15 @@ uint64_t cantorExpand(const std::vector<T> &arr,
 	std::vector<size_t> rks;
 	size_t n = arr.size(),
 		   tot = discretize(arr.begin(), arr.end(), rks, cmp, eq).size();
-	uint64_t fact = 1;
-	auto bit = FenwickTree<size_t>(tot);
+	FenwickTree<size_t> tree{std::vector<size_t>(tot)};
+	std::vector<size_t> cnts(tot);
 	uint64_t res = 0;
-	for (size_t i = 0; i != n; fact *= (++i)) {
-		res += fact * bit.query(rks[n - 1 - i]);
-		bit.modify(rks[n - 1 - i], 1);
+	uint64_t perm_num = 1; // number of distinct permutations of the suffix
+	for (size_t i = n; i--;) {
+		++cnts[rks[i]];
+		res += perm_num * tree.query(0, rks[i]) / cnts[rks[i]];
+		perm_num = perm_num * cnts[rks[i]] / i;
+		tree.modify(rks[i], 1);
 	}
 	return res;
 }
