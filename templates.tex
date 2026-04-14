@@ -885,6 +885,300 @@ protected:
 };
 \end{minted}
 
+\subsubsection{ZKW Lazy Segment Tree}
+\begin{minted}{cpp}
+template <typename T, typename LazyTag = T,
+		  typename Oper = std::plus<T>,
+		  typename ApplyTag = std::plus<T>,
+		  typename MergeTags = std::plus<LazyTag>>
+class ZkwLazySegTree {
+public:
+	static size_t leafNumOf(size_t n) {
+		return (n ? (size_t(1) << ceilLogn2(n)) : 1);
+	}
+	static size_t leftChildOf(size_t rt) { return (rt << 1); }
+	static size_t rightChildOf(size_t rt) { return ((rt << 1) | 1); }
+
+	/**
+	 * @pre `oper` must be a monoid operator on `T` with identity element `id`.
+	 *
+	 * @param `apply_tag` applies a `LazyTag` to a node `T` (passed as
+	 * `(tag, val)`) and returns the updated node value.
+	 * @param `merge_tags` combines two `LazyTag` elements (passed as
+	 * `(new_tag, old_tag)`).
+	 *
+	 * @warning If `ApplyTag` depends on range length, which should be stored
+	 * in `T`, construct the tree from `std::vector<T>`, or all nodes will
+	 * permanently have `len == 0`.
+	 *
+	 * @note `O(size())` time complexity.
+	 */
+	explicit ZkwLazySegTree(size_t n = 0,
+							Oper oper = Oper(),
+							T id = T(),
+							ApplyTag apply_tag = ApplyTag(),
+							MergeTags merge_tags = MergeTags(),
+							LazyTag lazy_id = LazyTag())
+		: m_sz(n),
+		  m_leaf_num(leafNumOf(n)), m_height(n ? ceilLogn2(m_leaf_num) : 0),
+		  m_tree(m_leaf_num << 1, id), m_tags(m_leaf_num, lazy_id),
+		  m_oper(std::move(oper)), m_id(std::move(id)),
+		  m_apply_tag(std::move(apply_tag)),
+		  m_merge_tags(std::move(merge_tags)),
+		  m_lazy_id(std::move(lazy_id)) {}
+	explicit ZkwLazySegTree(const std::vector<T> &arr,
+							Oper oper = Oper(),
+							T id = T(),
+							ApplyTag apply_tag = ApplyTag(),
+							MergeTags merge_tags = MergeTags(),
+							LazyTag lazy_id = LazyTag())
+		: m_sz(arr.size()),
+		  m_leaf_num(leafNumOf(arr.size())),
+		  m_height(arr.empty() ? 0 : ceilLogn2(m_leaf_num)),
+		  m_tree(m_leaf_num << 1, id),
+		  m_tags(m_leaf_num, lazy_id),
+		  m_oper(std::move(oper)),
+		  m_id(std::move(id)),
+		  m_apply_tag(std::move(apply_tag)),
+		  m_merge_tags(std::move(merge_tags)),
+		  m_lazy_id(std::move(lazy_id)) {
+		std::copy(arr.begin(), arr.end(), m_tree.begin() + m_leaf_num);
+		for (size_t i = m_leaf_num - 1; i; --i) m_pushUp(i);
+	}
+	void assign(size_t n,
+				Oper oper = Oper(),
+				T id = T(),
+				ApplyTag apply_tag = ApplyTag(),
+				MergeTags merge_tags = MergeTags(),
+				LazyTag lazy_id = LazyTag()) {
+		m_sz = n;
+		m_leaf_num = leafNumOf(n);
+		m_height = (n ? ceilLogn2(m_leaf_num) : 0);
+		m_tree.assign(m_leaf_num << 1, id);
+		m_tags.assign(m_leaf_num, lazy_id);
+		m_oper = std::move(oper);
+		m_id = std::move(id);
+		m_apply_tag = std::move(apply_tag);
+		m_merge_tags = std::move(merge_tags);
+		m_lazy_id = std::move(lazy_id);
+	}
+	void assign(const std::vector<T> &arr,
+				Oper oper = Oper(),
+				T id = T(),
+				ApplyTag apply_tag = ApplyTag(),
+				MergeTags merge_tags = MergeTags(),
+				LazyTag lazy_id = LazyTag()) {
+		m_sz = arr.size();
+		m_leaf_num = leafNumOf(arr.size());
+		m_height = (arr.empty() ? 0 : ceilLogn2(m_leaf_num));
+		m_tree.assign(m_leaf_num << 1, id);
+		std::copy(arr.begin(), arr.end(), m_tree.begin() + m_leaf_num);
+		m_tags.assign(m_leaf_num, lazy_id);
+		m_oper = std::move(oper);
+		m_id = std::move(id);
+		m_apply_tag = std::move(apply_tag);
+		m_merge_tags = std::move(merge_tags);
+		m_lazy_id = std::move(lazy_id);
+		for (size_t i = m_leaf_num - 1; i; --i) m_pushUp(i);
+	}
+
+	size_t size() const noexcept { return m_sz; }
+	size_t leafNum() const noexcept { return m_leaf_num; }
+	/**
+	 * @return number of edges from the root to the leaves.
+	 */
+	size_t height() const noexcept { return m_height; }
+	bool empty() const noexcept { return !m_sz; }
+
+	/**
+	 * @note Not `const` because `m_pushDown` modifies internal states.
+	 * @note `O(log(size()))` time complexity.
+	 */
+	const T &get(size_t pos) {
+		assert(pos < m_sz);
+		pos += m_leaf_num;
+		for (size_t i = m_height; i; --i) m_pushDown(pos >> i);
+		return m_tree[pos];
+	}
+	const T &operator[](size_t pos) { return get(pos); }
+
+	/**
+	 * @note `O(log(size()))` time complexity.
+	 */
+	void set(size_t pos, const T &val) {
+		assert(pos < m_sz);
+		pos += m_leaf_num;
+		for (size_t i = m_height; i; --i) m_pushDown(pos >> i);
+		m_tree[pos] = val;
+		for (size_t i = 1; i <= m_height; ++i) m_pushUp(pos >> i);
+	}
+
+	/**
+	 * @note `O(log(size()))` time complexity.
+	 */
+	T query(size_t pos, size_t len) {
+		assert(pos <= m_sz);
+		len = std::min(len, m_sz - pos);
+
+		if (len == 0) return m_id;
+		if (pos == 0 && len == m_sz) return m_tree[1];
+
+		size_t l = pos + m_leaf_num;
+		size_t r = pos + len + m_leaf_num;
+
+		for (size_t i = m_height; i; --i) {
+			if (((l >> i) << i) != l) m_pushDown(l >> i);
+			if (((r >> i) << i) != r) m_pushDown((r - 1) >> i);
+		}
+
+		T ls = m_id, rs = m_id;
+		for (; l < r; l >>= 1, r >>= 1) {
+			if (l & 1) ls = m_oper(ls, m_tree[l++]);
+			if (r & 1) rs = m_oper(m_tree[--r], rs);
+		}
+		return m_oper(ls, rs);
+	}
+
+	/**
+	 * @note Point application. `O(log(size()))` time complexity.
+	 */
+	void apply(size_t pos, const LazyTag &tag) {
+		assert(pos < m_sz);
+		pos += m_leaf_num;
+		for (size_t i = m_height; i; --i) m_pushDown(pos >> i);
+		m_tree[pos] = m_apply_tag(tag, m_tree[pos]);
+		for (size_t i = 1; i <= m_height; ++i) m_pushUp(pos >> i);
+	}
+
+	/**
+	 * @note Range application. `O(log(size()))` time complexity.
+	 */
+	void apply(size_t pos, size_t len, const LazyTag &tag) {
+		assert(pos <= m_sz);
+		len = std::min(len, m_sz - pos);
+		if (len == 0) return;
+
+		size_t l = pos + m_leaf_num;
+		size_t r = pos + len + m_leaf_num;
+
+		for (size_t i = m_height; i; --i) {
+			if (((l >> i) << i) != l) m_pushDown(l >> i);
+			if (((r >> i) << i) != r) m_pushDown((r - 1) >> i);
+		}
+
+		{
+			size_t l2 = l, r2 = r;
+			for (; l < r; l >>= 1, r >>= 1) {
+				if (l & 1) m_apply(l++, tag);
+				if (r & 1) m_apply(--r, tag);
+			}
+			l = l2;
+			r = r2;
+		}
+
+		for (size_t i = 1; i <= m_height; ++i) {
+			if (((l >> i) << i) != l) m_pushUp(l >> i);
+			if (((r >> i) << i) != r) m_pushUp((r - 1) >> i);
+		}
+	}
+
+	/**
+	 * @pre `pred(id) == true`.
+	 *
+	 * @return Minimum `beg` in `[0, end]` s.t. `pred(query(beg, end - beg)) == true`.
+	 *
+	 * @note `O(log(size()))` time complexity.
+	 */
+	template <typename Pred>
+	size_t minLeft(size_t end, Pred pred = Pred()) {
+		assert(end <= m_sz);
+		assert(pred(m_id));
+		if (!end) return 0;
+
+		end += m_leaf_num;
+		for (size_t i = m_height; i; --i) m_pushDown((end - 1) >> i);
+
+		T s = m_id;
+		do {
+			--end;
+			while (end > 1 && (end & 1)) end >>= 1;
+			if (!pred(m_oper(m_tree[end], s))) {
+				while (end < m_leaf_num) {
+					m_pushDown(end);
+					end = rightChildOf(end);
+					if (pred(m_oper(m_tree[end], s))) {
+						s = m_oper(m_tree[end], s);
+						--end;
+					}
+				}
+				return end - m_leaf_num + 1;
+			}
+			s = m_oper(m_tree[end], s);
+		} while (lowbit(end) != end);
+		return 0;
+	}
+
+	/**
+	 * @pre `pred(id) == true`.
+	 *
+	 * @return Maximum `end` in `[beg, size()]` s.t. `pred(query(beg, end - beg)) == true`.
+	 *
+	 * @note `O(log(size()))` time complexity.
+	 */
+	template <typename Pred>
+	size_t maxRight(size_t beg, Pred pred = Pred()) {
+		assert(beg <= m_sz);
+		assert(pred(m_id));
+		if (beg == m_sz) return m_sz;
+
+		beg += m_leaf_num;
+		for (size_t i = m_height; i; --i) m_pushDown(beg >> i);
+
+		T s = m_id;
+		do {
+			while ((beg & 1) == 0) beg >>= 1;
+			if (!pred(m_oper(s, m_tree[beg]))) {
+				while (beg < m_leaf_num) {
+					m_pushDown(beg);
+					beg = leftChildOf(beg);
+					if (pred(m_oper(s, m_tree[beg]))) {
+						s = m_oper(s, m_tree[beg]);
+						++beg;
+					}
+				}
+				return std::min(m_sz, beg - m_leaf_num);
+			}
+			s = m_oper(s, m_tree[beg]);
+			++beg;
+		} while (lowbit(beg) != beg);
+		return m_sz;
+	}
+
+protected:
+	size_t m_sz, m_leaf_num, m_height;
+	std::vector<T> m_tree;
+	std::vector<LazyTag> m_tags;
+	Oper m_oper;
+	T m_id;
+	ApplyTag m_apply_tag;
+	MergeTags m_merge_tags;
+	LazyTag m_lazy_id;
+
+	void m_pushUp(size_t rt) {
+		m_tree[rt] = m_oper(m_tree[leftChildOf(rt)], m_tree[rightChildOf(rt)]);
+	}
+	void m_apply(size_t rt, const LazyTag &tag) {
+		m_tree[rt] = m_apply_tag(tag, m_tree[rt]);
+		if (rt < m_leaf_num) m_tags[rt] = m_merge_tags(tag, m_tags[rt]);
+	}
+	void m_pushDown(size_t rt) {
+		m_apply(leftChildOf(rt), m_tags[rt]);
+		m_apply(rightChildOf(rt), m_tags[rt]);
+		m_tags[rt] = m_lazy_id;
+	}
+};
+\end{minted}
+
 \section{Number Theory}
 \subsection{Cantor Expansion}
 \begin{minted}{cpp}
