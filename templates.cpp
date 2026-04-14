@@ -1431,7 +1431,7 @@ public:
 	static size_t lowbit(size_t x) noexcept { return (x & (-x)); }
 
 	/**
-	 * @pre Oper must be a commutative monoid operator on T.
+	 * @pre oper must be a commutative monoid operator on T.
 	 *
 	 * @note O(n) time complexity.
 	 */
