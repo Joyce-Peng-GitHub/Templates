@@ -370,14 +370,6 @@ public:
 	using Elem = _T;
 	using Table = std::vector<std::vector<Elem>>;
 
-	inline static unsigned floorLogn2(uint64_t x) {
-#if __cplusplus >= 202002L
-		return (std::bit_width(x) - 1);
-#else
-		return (x ? (sizeof(uint64_t) * 8 - __builtin_clzll(x) - 1) : -1);
-#endif
-	}
-
 	SparseTable(const Oper &oper = Oper()) : m_oper(oper) {}
 	template <typename Iter, typename = RequireInputIter<Iter>>
 	SparseTable(Iter begin, Iter end, const Oper &oper = Oper())
