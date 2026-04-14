@@ -213,6 +213,8 @@ inline T upperBound(T beg, T end, const Ret &val,
 	return beg;
 }
 
+inline uint64_t lowbit(uint64_t x) { return (x & (-x)); }
+
 inline unsigned floorLogn2(uint64_t x) {
 #if __cplusplus >= 202002L
 	return (std::bit_width(x) - 1);
@@ -1428,8 +1430,6 @@ template <typename T, typename Oper = std::plus<T>,
 		  typename Seq = std::vector<T>>
 class FenwickTree {
 public:
-	static size_t lowbit(size_t x) noexcept { return (x & (-x)); }
-
 	/**
 	 * @pre oper must be a commutative monoid operator on T.
 	 *
@@ -1533,7 +1533,6 @@ public:
 	static size_t leafNumOf(size_t n) {
 		return (n ? (size_t(1) << ceilLogn2(n)) : 1);
 	}
-	static size_t lowbit(size_t x) { return (x & (-x)); }
 	static size_t leftChildOf(size_t rt) { return (rt << 1); }
 	static size_t rightChildOf(size_t rt) { return ((rt << 1) | 1); }
 
