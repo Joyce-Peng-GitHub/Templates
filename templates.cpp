@@ -2027,6 +2027,208 @@ std::vector<size_t> longestIncrSubseq(Iter begin, Iter end, Cmp cmp = Cmp()) {
 	return res;
 }
 
+namespace mo {
+	namespace std {
+		struct Query {
+			size_t beg, end; // `[beg, end)`
+		};
+
+		/**
+		 * @pre `State` must implement
+		 * - `add(size_t pos);`
+		 * - `sub(size_t pos);`
+		 * - `Res get();`.
+		 *
+		 * @note `O(n * sqrt(q) * t + q log q)` time complexity, where
+		 * `q = qrys.size()` and `t` is the time complexity of state transisions.
+		 */
+		template <typename Res, typename State>
+		::std::vector<Res> solve(size_t n,
+								 const ::std::vector<Query> &qrys,
+								 State &state) {
+			size_t q = qrys.size();
+			if (q == 0) return {};
+
+			size_t b = ::std::max<size_t>(1, n / ::std::sqrt(q));
+			::std::vector<size_t> ord(q);
+			for (size_t i = 0; i < q; ++i) ord[i] = i;
+			::std::sort(ord.begin(), ord.end(),
+						[&](size_t lhs, size_t rhs) {
+							size_t lb = qrys[lhs].beg / b, rb = qrys[rhs].beg / b;
+							if (lb != rb) return lb < rb;
+							return ((lb & 1)
+										? (qrys[lhs].end < qrys[rhs].end)
+										: (qrys[lhs].end > qrys[rhs].end));
+						});
+
+			::std::vector<Res> res(q);
+			size_t beg = 0, end = 0;
+			for (size_t id : ord) {
+				const auto &qry = qrys[id];
+				assert(qry.beg <= qry.end && qry.end <= n);
+				while (beg > qry.beg) state.add(--beg);
+				while (end < qry.end) state.add(end++);
+				while (beg < qry.beg) state.sub(beg++);
+				while (end > qry.end) state.sub(--end);
+				res[id] = state.get();
+			}
+			return res;
+		}
+	}
+
+	namespace upd {
+		struct Query {
+			size_t beg, end; // `[beg, end)`
+			size_t tm;		 // `tm` updates need to be performed before this query
+		};
+
+		/**
+		 * @pre `State` must implement
+		 * - `add(size_t pos);`
+		 * - `sub(size_t pos);`
+		 * - `apply(size_t tm, size_t beg, size_t end);`
+		 * - `undo(size_t tm, size_t beg, size_t end);`
+		 * - `Res get();`
+		 *
+		 * @param u number of updates.
+		 *
+		 * @note `O(cbrt(n^2 * q^2 * u) * t + q log q)` time complexity, where
+		 * `q = qrys.size()` and `t` is the time complexity of state transisions.
+		 */
+		template <typename Res, typename State>
+		::std::vector<Res> solve(size_t n,
+								 size_t u,
+								 const ::std::vector<Query> &qrys,
+								 State &state) {
+			size_t q = qrys.size();
+			if (q == 0) return {};
+
+			size_t b = ::std::max<size_t>(
+				1,
+				(u
+					 ? ::std::round(::std::cbrt(
+						   static_cast<long double>(n) * n * u / q))
+					 : n / ::std::sqrt(q)));
+			::std::vector<size_t> ord(q);
+			for (size_t i = 0; i < q; ++i) ord[i] = i;
+			::std::sort(ord.begin(), ord.end(),
+						[&](size_t lhs, size_t rhs) {
+							size_t lbb = qrys[lhs].beg / b, rbb = qrys[rhs].beg / b;
+							if (lbb != rbb) return lbb < rbb;
+							size_t leb = qrys[lhs].end / b, reb = qrys[rhs].end / b;
+							if (leb != reb) return (lbb & 1) ? leb < reb : leb > reb;
+							return ((leb & 1)
+										? (qrys[lhs].tm < qrys[rhs].tm)
+										: (qrys[lhs].tm > qrys[rhs].tm));
+						});
+
+			::std::vector<Res> res(q);
+			size_t beg = 0, end = 0, tm = 0;
+			for (size_t id : ord) {
+				const auto &qry = qrys[id];
+				assert(qry.beg <= qry.end && qry.end <= n);
+				while (beg > qry.beg) state.add(--beg);
+				while (end < qry.end) state.add(end++);
+				while (beg < qry.beg) state.sub(beg++);
+				while (end > qry.end) state.sub(--end);
+				while (tm < qry.tm) state.apply(tm++, beg, end);
+				while (tm > qry.tm) state.undo(--tm, beg, end);
+				res[id] = state.get();
+			}
+			return res;
+		}
+	}
+
+	namespace rb {
+		struct Query {
+			size_t beg, end; // [beg, end)
+		};
+
+		/**
+		 * Suitable for maintaining information that is "easy to add but hard
+		 * to subtract" or "easy to remove but hard to add" (using add-only as
+		 * an example).
+		 *
+		 * @pre `State` must implement
+		 * - `add(size_t pos);`
+		 * - `Res get();`
+		 * - `void snapshot();` records a snapshot of the current internal state.
+		 * - `void rollback();` rolls back the state to the most recent snapshot.
+		 * - `void reset();`  resets the state to the initial empty/zero state.
+		 *
+		 * @note `O(n * sqrt(q) * t_add + q * t_snap + q log q)` time complexity,
+		 * where `q = qrys.size()` and `t_add` and `t_snap` are the time
+		 * complexities of `add` and `snapshot` operations, respectively.
+		 */
+		template <typename Res, typename State>
+		::std::vector<Res> solve(size_t n,
+								 const ::std::vector<Query> &qrys,
+								 State &state) {
+			size_t q = qrys.size();
+			if (q == 0) return {};
+
+			size_t b = ::std::max<size_t>(1, n / ::std::sqrt(q));
+
+			::std::vector<Res> res(q);
+			::std::vector<size_t> ord;
+			ord.reserve(q);
+
+			// Pre-process short queries
+			for (size_t i = 0; i < q; ++i) {
+				const auto &qry = qrys[i];
+				assert(qry.beg <= qry.end && qry.end <= n);
+				if (qry.beg == qry.end) {
+					res[i] = state.get();
+					continue;
+				}
+
+				// Short query
+				if (qry.end - qry.beg <= b || qry.beg / b == (qry.end - 1) / b) {
+					state.snapshot();
+					for (size_t j = qry.beg; j < qry.end; ++j) state.add(j);
+					res[i] = state.get();
+					state.rollback(); // Restores state back to completely empty
+				} else {
+					// Long cross-block query: queue for Mo's processing
+					ord.emplace_back(i);
+				}
+			}
+
+			// Sort only the remaining long queries
+			::std::sort(ord.begin(), ord.end(),
+						[&](size_t lhs, size_t rhs) {
+							size_t lb = qrys[lhs].beg / b, rb = qrys[rhs].beg / b;
+							if (lb != rb) return lb < rb;
+							return (qrys[lhs].end < qrys[rhs].end);
+						});
+
+			size_t last_block = -1;
+			size_t beg = 0, end = 0;
+			for (size_t id : ord) {
+				const auto &qry = qrys[id];
+				size_t block = qry.beg / b;
+
+				// Cross-block query
+				if (block != last_block) {
+					state.reset();
+					beg = (block + 1) * b;
+					end = beg;
+					last_block = block;
+				}
+
+				while (end < qry.end) state.add(end++);
+
+				state.snapshot();
+				for (size_t i = beg; i > qry.beg; state.add(--i));
+
+				res[id] = state.get();
+				state.rollback();
+			}
+			return res;
+		}
+	}
+}
+
 /**
  * @pre arr.size() <= 20.
  *
