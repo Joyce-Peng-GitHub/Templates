@@ -2359,6 +2359,35 @@ std::vector<uint64_t> modMulInvs(const std::vector<uint64_t> &arr, uint64_t mod)
 	return invs;
 }
 
+/**
+ * @brief solve the system of equations x % mod == rem for each (mod, rem) in
+ * eqns, the solution expressed as x = period * n + ans for any integer n.
+ * @return true if a solution exists, false otherwise
+ */
+inline bool exCrt(
+	const std::vector<std::pair<int64_t, int64_t>> &eqns,
+	int64_t &period, int64_t &ans
+) {
+	period = 1, ans = 0;
+	for (const auto &eqn : eqns) {
+		auto mod = eqn.first;
+		if (mod == 0) return false;
+		if (mod < 0) mod = -mod;
+		auto rem = eqn.second;
+		rem = (rem % mod + mod) % mod;
+
+		int64_t x, y, g = exGcd(period, mod, x, y);
+		if ((rem - ans) % g != 0) return false;
+		auto q = mod / g;
+		x = (((rem - ans) / g * static_cast<__int128_t>(x)) % q + q) % q;
+		auto new_period = period * (mod / g);
+		ans = (ans + period * x) % new_period;
+		period = new_period;
+	}
+	ans = (ans + period) % period;
+	return true;
+}
+
 inline uint64_t derangement(uint64_t n, uint64_t mod) {
 	uint64_t d = 1;
 	for (uint64_t i = 1; i <= n; ++i) {
