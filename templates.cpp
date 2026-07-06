@@ -1,7 +1,6 @@
 #include <bits/stdc++.h>
 
-template <typename Int,
-		  typename = typename std::enable_if<std::is_integral<Int>::value>::type>
+template <typename Int, typename = typename std::enable_if<std::is_integral<Int>::value>::type>
 inline void readInt(Int &res, FILE *file = stdin) {
 	res = 0;
 	bool neg = false;
@@ -20,9 +19,7 @@ inline void readInt(Int &res, FILE *file = stdin) {
 	if (neg) res = -res;
 }
 
-template <typename Uint,
-		  typename = typename std::enable_if<std::is_integral<Uint>::value &&
-											 std::is_unsigned<Uint>::value>::type>
+template <typename Uint, typename = typename std::enable_if<std::is_integral<Uint>::value && std::is_unsigned<Uint>::value>::type>
 inline void writeUint(Uint val, FILE *file = stdout) {
 	if (!val) {
 		std::fputc('0', file);
@@ -36,8 +33,7 @@ inline void writeUint(Uint val, FILE *file = stdout) {
 	}
 	while (cnt--) std::fputc(buf[cnt], file);
 }
-template <typename Int,
-		  typename = typename std::enable_if<std::is_integral<Int>::value>::type>
+template <typename Int, typename = typename std::enable_if<std::is_integral<Int>::value>::type>
 inline void writeInt(Int val, FILE *file = stdout) {
 	if (val < 0) {
 		std::fputc('-', file);
@@ -70,10 +66,7 @@ inline __uint128_t stoulll(const std::string &str, std::size_t *pos = nullptr, i
 		} else {
 			base = 10;
 		}
-	} else if (base == 16 &&
-			   *iter == '0' &&
-			   iter + 2 < str.end() &&
-			   (iter[1] == 'x' || iter[1] == 'X')) {
+	} else if (base == 16 && *iter == '0' && iter + 2 < str.end() && (iter[1] == 'x' || iter[1] == 'X')) {
 		iter += 2;
 	}
 	if (base < 2 || base > 26) {
@@ -122,10 +115,7 @@ inline __int128_t stolll(const std::string &str, std::size_t *pos = nullptr, int
 		} else {
 			base = 10;
 		}
-	} else if (base == 16 &&
-			   *iter == '0' &&
-			   iter + 2 < str.end() &&
-			   (iter[1] == 'x' || iter[1] == 'X')) {
+	} else if (base == 16 && *iter == '0' && iter + 2 < str.end() && (iter[1] == 'x' || iter[1] == 'X')) {
 		iter += 2;
 	}
 	if (base < 2 || base > 26) {
@@ -179,10 +169,8 @@ inline T &maxEq(T &lhs, const T &rhs, Cmp cmp = Cmp()) {
  * @brief behaves as if it generates func[beg, end) and
  * 	performs std::lower_bound on it
  */
-template <typename T, typename Ret, typename Func,
-		  typename Cmp = std::less<Ret>>
-inline T lowerBound(T beg, T end, const Ret &val,
-					Func func = Func(), Cmp cmp = Cmp()) {
+template <typename T, typename Ret, typename Func, typename Cmp = std::less<Ret>>
+inline T lowerBound(T beg, T end, const Ret &val, Func func = Func(), Cmp cmp = Cmp()) {
 	while (beg < end) {
 		T mid = beg + (end - beg) / 2;
 		if (cmp(func(mid), val)) {
@@ -198,10 +186,8 @@ inline T lowerBound(T beg, T end, const Ret &val,
  * @brief behaves as if it generates func[beg, end) and
  * 	performs std::upper_bound on it
  */
-template <typename T, typename Ret, typename Func,
-		  typename Cmp = std::less<Ret>>
-inline T upperBound(T beg, T end, const Ret &val,
-					Func func = Func(), Cmp cmp = Cmp()) {
+template <typename T, typename Ret, typename Func, typename Cmp = std::less<Ret>>
+inline T upperBound(T beg, T end, const Ret &val, Func func = Func(), Cmp cmp = Cmp()) {
 	while (beg < end) {
 		T mid = beg + (end - beg) / 2;
 		if (cmp(val, func(mid))) {
@@ -274,14 +260,7 @@ namespace std {
 	struct is_unsigned<__uint128_t> : public true_type {};
 }
 
-template <typename Mod = uint32_t,
-		  typename Mu = uint64_t,
-		  typename Aux = __uint128_t,
-		  typename = std::enable_if_t<std::is_unsigned<Mod>::value &&
-									  std::is_unsigned<Mu>::value &&
-									  std::is_unsigned<Aux>::value &&
-									  sizeof(Mod) * 2 == sizeof(Mu) &&
-									  sizeof(Mu) * 2 == sizeof(Aux)>>
+template <typename Mod = uint32_t, typename Mu = uint64_t, typename Aux = __uint128_t, typename = std::enable_if_t<std::is_unsigned<Mod>::value && std::is_unsigned<Mu>::value && std::is_unsigned<Aux>::value && sizeof(Mod) * 2 == sizeof(Mu) && sizeof(Mu) * 2 == sizeof(Aux)>>
 class Barrett {
 public:
 	explicit Barrett(Mod mod) : m_mod(mod), m_mu((Mu)(-1) / mod + 1) {}
@@ -361,10 +340,9 @@ public:
 		for (size_t i = 0; i != size(); ++i) {
 			grps[leader_of[i]].emplace_back(i);
 		}
-		grps.erase(std::remove_if(grps.begin(), grps.end(),
-								  [](const std::vector<size_t> &grp) {
-									  return grp.empty();
-								  }),
+		grps.erase(std::remove_if(grps.begin(), grps.end(), [](const std::vector<size_t> &grp) {
+					   return grp.empty();
+				   }),
 				   grps.end());
 		return grps;
 	}
@@ -392,8 +370,7 @@ public:
 		}
 		for (size_t i = 1; (size_t(1) << i - 1) < size(); ++i) {
 			for (size_t j = 0; j + (size_t(1) << i) <= size(); ++j) {
-				m_data[j][i] = m_oper(m_data[j][i - 1],
-									  m_data[j + (size_t(1) << (i - 1))][i - 1]);
+				m_data[j][i] = m_oper(m_data[j][i - 1], m_data[j + (size_t(1) << (i - 1))][i - 1]);
 			}
 		}
 	}
@@ -412,8 +389,7 @@ public:
 		}
 		for (size_t i = 1; (size_t(1) << (i - 1)) < size(); ++i) {
 			for (size_t j = 0; j + (size_t(1) << i) <= size(); ++j) {
-				m_data[j][i] = m_oper(m_data[j][i - 1],
-									  m_data[j + (size_t(1) << (i - 1))][i - 1]);
+				m_data[j][i] = m_oper(m_data[j][i - 1], m_data[j + (size_t(1) << (i - 1))][i - 1]);
 			}
 		}
 	}
@@ -425,16 +401,12 @@ public:
 
 	inline Elem query(size_t pos, size_t len) const {
 		if (pos >= m_data.size()) {
-			throw std::out_of_range("SparseTable::query: pos (which is " +
-									std::to_string(pos) +
-									") > size() (which is " +
-									std::to_string(m_data.size()) + ')');
+			throw std::out_of_range("SparseTable::query: pos (which is " + std::to_string(pos) + ") > size() (which is " + std::to_string(m_data.size()) + ')');
 		}
 		if (len == 0) throw std::out_of_range("SparseTable::query: len == 0");
 		if (pos + len > size()) len = size() - pos;
 		size_t log_len = floorLogn2(len);
-		return m_oper(m_data[pos][log_len],
-					  m_data[pos + len - (size_t(1) << log_len)][log_len]);
+		return m_oper(m_data[pos][log_len], m_data[pos + len - (size_t(1) << log_len)][log_len]);
 	}
 
 protected:
@@ -454,10 +426,7 @@ public:
 		T val;
 
 		Node() = default;
-		template <typename U, typename... Args,
-				  typename = typename std::enable_if<
-					  !std::is_same<
-						  typename std::decay<U>::type, Node>::value>::type>
+		template <typename U, typename... Args, typename = typename std::enable_if<!std::is_same<typename std::decay<U>::type, Node>::value>::type>
 		explicit Node(U &&u, Args &&...args)
 			: val(std::forward<U>(u), std::forward<Args>(args)...) {}
 		Node(const Node &other)
@@ -706,8 +675,7 @@ protected:
 			return IterBase(m_dq, m_idx - offset);
 		}
 		difference_type operator-(const IterBase &other) const {
-			return (static_cast<difference_type>(m_idx) -
-					static_cast<difference_type>(other.m_idx));
+			return (static_cast<difference_type>(m_idx) - static_cast<difference_type>(other.m_idx));
 		}
 
 		// Comparison operators
@@ -1076,10 +1044,7 @@ private:
 
 	void m_rangeCheck(size_type pos) const {
 		if (pos >= m_sz) {
-			throw std::out_of_range("Deque::m_rangeCheck: pos (which is " +
-									std::to_string(pos) +
-									") >= this->size() (which is " +
-									std::to_string(m_sz) + ")");
+			throw std::out_of_range("Deque::m_rangeCheck: pos (which is " + std::to_string(pos) + ") >= this->size() (which is " + std::to_string(m_sz) + ")");
 		}
 	}
 
@@ -1418,8 +1383,7 @@ struct unordered_trie_multiset {
 	}
 };
 
-template <typename T, typename Oper = std::plus<T>,
-		  typename Seq = std::vector<T>>
+template <typename T, typename Oper = std::plus<T>, typename Seq = std::vector<T>>
 class FenwickTree {
 public:
 	/**
@@ -1535,8 +1499,7 @@ public:
 		: m_sz(n), m_leaf_num(leafNumOf(n)),
 		  m_tree(m_leaf_num << 1, id),
 		  m_oper(std::move(oper)), m_id(std::move(id)) {}
-	explicit ZkwSegTree(const std::vector<T> &arr,
-						Oper oper = Oper(), T id = T())
+	explicit ZkwSegTree(const std::vector<T> &arr, Oper oper = Oper(), T id = T())
 		: m_sz(arr.size()), m_leaf_num(leafNumOf(arr.size())),
 		  m_tree(m_leaf_num << 1, id),
 		  m_oper(std::move(oper)), m_id(std::move(id)) {
@@ -1589,9 +1552,7 @@ public:
 		if (pos == 0 && len == m_sz) return m_tree[1];
 
 		T ls = m_id, rs = m_id;
-		for (size_t l = pos + m_leaf_num, r = pos + len + m_leaf_num;
-			 l < r;
-			 l >>= 1, r >>= 1) {
+		for (size_t l = pos + m_leaf_num, r = pos + len + m_leaf_num; l < r; l >>= 1, r >>= 1) {
 			if (l & 1) ls = m_oper(ls, m_tree[l++]);
 			if (r & 1) rs = m_oper(m_tree[--r], rs);
 		}
@@ -1679,10 +1640,7 @@ protected:
 	}
 };
 
-template <typename T, typename LazyTag = T,
-		  typename Oper = std::plus<T>,
-		  typename ApplyTag = std::plus<T>,
-		  typename MergeTags = std::plus<LazyTag>>
+template <typename T, typename LazyTag = T, typename Oper = std::plus<T>, typename ApplyTag = std::plus<T>, typename MergeTags = std::plus<LazyTag>>
 class ZkwLazySegTree {
 public:
 	static size_t leafNumOf(size_t n) {
@@ -1705,12 +1663,7 @@ public:
 	 *
 	 * @note `O(size())` time complexity.
 	 */
-	explicit ZkwLazySegTree(size_t n = 0,
-							Oper oper = Oper(),
-							T id = T(),
-							ApplyTag apply_tag = ApplyTag(),
-							MergeTags merge_tags = MergeTags(),
-							LazyTag lazy_id = LazyTag())
+	explicit ZkwLazySegTree(size_t n = 0, Oper oper = Oper(), T id = T(), ApplyTag apply_tag = ApplyTag(), MergeTags merge_tags = MergeTags(), LazyTag lazy_id = LazyTag())
 		: m_sz(n),
 		  m_leaf_num(leafNumOf(n)), m_height(n ? ceilLogn2(m_leaf_num) : 0),
 		  m_tree(m_leaf_num << 1, id), m_tags(m_leaf_num, lazy_id),
@@ -1718,12 +1671,7 @@ public:
 		  m_apply_tag(std::move(apply_tag)),
 		  m_merge_tags(std::move(merge_tags)),
 		  m_lazy_id(std::move(lazy_id)) {}
-	explicit ZkwLazySegTree(const std::vector<T> &arr,
-							Oper oper = Oper(),
-							T id = T(),
-							ApplyTag apply_tag = ApplyTag(),
-							MergeTags merge_tags = MergeTags(),
-							LazyTag lazy_id = LazyTag())
+	explicit ZkwLazySegTree(const std::vector<T> &arr, Oper oper = Oper(), T id = T(), ApplyTag apply_tag = ApplyTag(), MergeTags merge_tags = MergeTags(), LazyTag lazy_id = LazyTag())
 		: m_sz(arr.size()),
 		  m_leaf_num(leafNumOf(arr.size())),
 		  m_height(arr.empty() ? 0 : ceilLogn2(m_leaf_num)),
@@ -1737,12 +1685,7 @@ public:
 		std::copy(arr.begin(), arr.end(), m_tree.begin() + m_leaf_num);
 		for (size_t i = m_leaf_num - 1; i; --i) m_pushUp(i);
 	}
-	void assign(size_t n,
-				Oper oper = Oper(),
-				T id = T(),
-				ApplyTag apply_tag = ApplyTag(),
-				MergeTags merge_tags = MergeTags(),
-				LazyTag lazy_id = LazyTag()) {
+	void assign(size_t n, Oper oper = Oper(), T id = T(), ApplyTag apply_tag = ApplyTag(), MergeTags merge_tags = MergeTags(), LazyTag lazy_id = LazyTag()) {
 		m_sz = n;
 		m_leaf_num = leafNumOf(n);
 		m_height = (n ? ceilLogn2(m_leaf_num) : 0);
@@ -1754,12 +1697,7 @@ public:
 		m_merge_tags = std::move(merge_tags);
 		m_lazy_id = std::move(lazy_id);
 	}
-	void assign(const std::vector<T> &arr,
-				Oper oper = Oper(),
-				T id = T(),
-				ApplyTag apply_tag = ApplyTag(),
-				MergeTags merge_tags = MergeTags(),
-				LazyTag lazy_id = LazyTag()) {
+	void assign(const std::vector<T> &arr, Oper oper = Oper(), T id = T(), ApplyTag apply_tag = ApplyTag(), MergeTags merge_tags = MergeTags(), LazyTag lazy_id = LazyTag()) {
 		m_sz = arr.size();
 		m_leaf_num = leafNumOf(arr.size());
 		m_height = (arr.empty() ? 0 : ceilLogn2(m_leaf_num));
@@ -1975,13 +1913,9 @@ protected:
  *
  * @note O(n log n) time complexity.
  */
-template <typename Iter,
-		  typename Cmp = std::less<typename std::iterator_traits<Iter>::value_type>,
-		  typename Eq = std::equal_to<typename std::iterator_traits<Iter>::value_type>,
-		  typename = RequireFwdIter<Iter>>
+template <typename Iter, typename Cmp = std::less<typename std::iterator_traits<Iter>::value_type>, typename Eq = std::equal_to<typename std::iterator_traits<Iter>::value_type>, typename = RequireFwdIter<Iter>>
 inline std::vector<typename std::iterator_traits<Iter>::value_type>
-discretize(Iter begin, Iter end, std::vector<size_t> &res,
-		   Cmp cmp = Cmp(), Eq eq = Eq()) {
+discretize(Iter begin, Iter end, std::vector<size_t> &res, Cmp cmp = Cmp(), Eq eq = Eq()) {
 	auto unq = std::vector<typename std::iterator_traits<Iter>::value_type>(begin, end);
 	size_t n = unq.size();
 	std::sort(unq.begin(), unq.end(), cmp);
@@ -1999,9 +1933,7 @@ discretize(Iter begin, Iter end, std::vector<size_t> &res,
  *
  * @note O(n log n) time complexity.
  */
-template <typename Iter,
-		  typename Cmp = std::less<typename std::iterator_traits<Iter>::value_type>,
-		  typename = RequireFwdIter<Iter>>
+template <typename Iter, typename Cmp = std::less<typename std::iterator_traits<Iter>::value_type>, typename = RequireFwdIter<Iter>>
 std::vector<size_t> longestIncrSubseq(Iter begin, Iter end, Cmp cmp = Cmp()) {
 	auto cmpVal = [begin, end, &cmp](size_t lhs, size_t rhs) {
 		return cmp(*std::next(begin, lhs), *std::next(begin, rhs));
@@ -2043,23 +1975,18 @@ namespace mo {
 		 * `q = qrys.size()` and `t` is the time complexity of state transisions.
 		 */
 		template <typename Res, typename State>
-		::std::vector<Res> solve(size_t n,
-								 const ::std::vector<Query> &qrys,
-								 State &state) {
+		::std::vector<Res> solve(size_t n, const ::std::vector<Query> &qrys, State &state) {
 			size_t q = qrys.size();
 			if (q == 0) return {};
 
 			size_t b = ::std::max<size_t>(1, n / ::std::sqrt(q));
 			::std::vector<size_t> ord(q);
 			for (size_t i = 0; i < q; ++i) ord[i] = i;
-			::std::sort(ord.begin(), ord.end(),
-						[&](size_t lhs, size_t rhs) {
-							size_t lb = qrys[lhs].beg / b, rb = qrys[rhs].beg / b;
-							if (lb != rb) return lb < rb;
-							return ((lb & 1)
-										? (qrys[lhs].end < qrys[rhs].end)
-										: (qrys[lhs].end > qrys[rhs].end));
-						});
+			::std::sort(ord.begin(), ord.end(), [&](size_t lhs, size_t rhs) {
+				size_t lb = qrys[lhs].beg / b, rb = qrys[rhs].beg / b;
+				if (lb != rb) return lb < rb;
+				return ((lb & 1) ? (qrys[lhs].end < qrys[rhs].end) : (qrys[lhs].end > qrys[rhs].end));
+			});
 
 			::std::vector<Res> res(q);
 			size_t beg = 0, end = 0;
@@ -2096,31 +2023,24 @@ namespace mo {
 		 * `q = qrys.size()` and `t` is the time complexity of state transisions.
 		 */
 		template <typename Res, typename State>
-		::std::vector<Res> solve(size_t n,
-								 size_t u,
-								 const ::std::vector<Query> &qrys,
-								 State &state) {
+		::std::vector<Res> solve(size_t n, size_t u, const ::std::vector<Query> &qrys, State &state) {
 			size_t q = qrys.size();
 			if (q == 0) return {};
 
 			size_t b = ::std::max<size_t>(
 				1,
 				(u
-					 ? ::std::round(::std::cbrt(
-						   static_cast<long double>(n) * n * u / q))
+					 ? ::std::round(::std::cbrt(static_cast<long double>(n) * n * u / q))
 					 : n / ::std::sqrt(q)));
 			::std::vector<size_t> ord(q);
 			for (size_t i = 0; i < q; ++i) ord[i] = i;
-			::std::sort(ord.begin(), ord.end(),
-						[&](size_t lhs, size_t rhs) {
-							size_t lbb = qrys[lhs].beg / b, rbb = qrys[rhs].beg / b;
-							if (lbb != rbb) return lbb < rbb;
-							size_t leb = qrys[lhs].end / b, reb = qrys[rhs].end / b;
-							if (leb != reb) return (lbb & 1) ? leb < reb : leb > reb;
-							return ((leb & 1)
-										? (qrys[lhs].tm < qrys[rhs].tm)
-										: (qrys[lhs].tm > qrys[rhs].tm));
-						});
+			::std::sort(ord.begin(), ord.end(), [&](size_t lhs, size_t rhs) {
+				size_t lbb = qrys[lhs].beg / b, rbb = qrys[rhs].beg / b;
+				if (lbb != rbb) return lbb < rbb;
+				size_t leb = qrys[lhs].end / b, reb = qrys[rhs].end / b;
+				if (leb != reb) return (lbb & 1) ? leb < reb : leb > reb;
+				return ((leb & 1) ? (qrys[lhs].tm < qrys[rhs].tm) : (qrys[lhs].tm > qrys[rhs].tm));
+			});
 
 			::std::vector<Res> res(q);
 			size_t beg = 0, end = 0, tm = 0;
@@ -2161,9 +2081,7 @@ namespace mo {
 		 * complexities of `add` and `snapshot` operations, respectively.
 		 */
 		template <typename Res, typename State>
-		::std::vector<Res> solve(size_t n,
-								 const ::std::vector<Query> &qrys,
-								 State &state) {
+		::std::vector<Res> solve(size_t n, const ::std::vector<Query> &qrys, State &state) {
 			size_t q = qrys.size();
 			if (q == 0) return {};
 
@@ -2195,12 +2113,11 @@ namespace mo {
 			}
 
 			// Sort only the remaining long queries
-			::std::sort(ord.begin(), ord.end(),
-						[&](size_t lhs, size_t rhs) {
-							size_t lb = qrys[lhs].beg / b, rb = qrys[rhs].beg / b;
-							if (lb != rb) return lb < rb;
-							return (qrys[lhs].end < qrys[rhs].end);
-						});
+			::std::sort(ord.begin(), ord.end(), [&](size_t lhs, size_t rhs) {
+				size_t lb = qrys[lhs].beg / b, rb = qrys[rhs].beg / b;
+				if (lb != rb) return lb < rb;
+				return (qrys[lhs].end < qrys[rhs].end);
+			});
 
 			size_t last_block = -1;
 			size_t beg = 0, end = 0;
@@ -2237,8 +2154,7 @@ namespace mo {
  * @note O(n log n) time complexity.
  */
 template <typename T, typename Cmp = std::less<T>, typename Eq = std::equal_to<T>>
-uint64_t cantorExpand(const std::vector<T> &arr,
-					  Cmp cmp = Cmp(), Eq eq = Eq()) {
+uint64_t cantorExpand(const std::vector<T> &arr, Cmp cmp = Cmp(), Eq eq = Eq()) {
 	std::vector<size_t> rks;
 	size_t n = arr.size(),
 		   tot = discretize(arr.begin(), arr.end(), rks, cmp, eq).size();
@@ -2280,18 +2196,13 @@ size_t mergeSort(OutputIter first, OutputIter last, AuxIter aux) {
 	std::copy(aux, k, first);
 	return inv;
 }
-template <typename OutputIter,
-		  typename Container =
-			  std::vector<typename std::iterator_traits<OutputIter>::value_type>>
+template <typename OutputIter, typename Container = std::vector<typename std::iterator_traits<OutputIter>::value_type>>
 inline size_t mergeSort(OutputIter first, OutputIter last) {
 	auto aux = Container(std::distance(first, last));
 	return mergeSort(first, last, aux.begin());
 }
 
-template <typename Uint = uint64_t, typename Aux = __uint128_t,
-		  typename = std::enable_if_t<std::is_unsigned<Uint>::value &&
-									  std::is_unsigned<Aux>::value &&
-									  sizeof(Uint) * 2 <= sizeof(Aux)>>
+template <typename Uint = uint64_t, typename Aux = __uint128_t, typename = std::enable_if_t<std::is_unsigned<Uint>::value && std::is_unsigned<Aux>::value && sizeof(Uint) * 2 <= sizeof(Aux)>>
 inline Uint qPowMod(Uint base, Uint exp, Uint mod) {
 	Aux mul = base, res = 1;
 	while (exp) {
@@ -2364,12 +2275,11 @@ std::vector<uint64_t> modMulInvs(const std::vector<uint64_t> &arr, uint64_t mod)
  * solution expressed as x = period * n + ans for any integer n. This is an online
  * algorithm. Each call to this function adds a new equation to the system. You
  * should initialize period = 1, ans = 0 before any equation is added.
- * @return true if a solution exists, false otherwise 
+ * @return true if a solution exists, false otherwise
  */
 inline bool exCrt(
 	int64_t mod, int64_t rem,
-	int64_t &period, int64_t &ans
-) {
+	int64_t &period, int64_t &ans) {
 	if (mod == 0) return false;
 	if (mod < 0) mod = -mod;
 	rem = (rem % mod + mod) % mod;
@@ -2722,13 +2632,8 @@ inline size_t periodLength(Iter begin, Iter end) {
 	return (pi.size() - pi.back());
 }
 
-template <typename Mod = uint32_t,
-		  typename Aux = uint64_t,
-		  typename = std::enable_if_t<std::is_unsigned<Mod>::value &&
-									  std::is_unsigned<Aux>::value &&
-									  sizeof(Mod) * 2 == sizeof(Aux)>>
-std::vector<Mod> hashOf(const std::string &s,
-						Mod base = 233, Mod mod = 993244853) {
+template <typename Mod = uint32_t, typename Aux = uint64_t, typename = std::enable_if_t<std::is_unsigned<Mod>::value && std::is_unsigned<Aux>::value && sizeof(Mod) * 2 == sizeof(Aux)>>
+std::vector<Mod> hashOf(const std::string &s, Mod base = 233, Mod mod = 993244853) {
 	auto h = std::vector<Mod>(s.size() + 1);
 	Aux b = base;
 	for (size_t i = 0; i != s.size(); ++i) h[i + 1] = (h[i] * b + s[i]) % mod;
@@ -2793,9 +2698,7 @@ sufArrOf(Iter begin, Iter end) {
 			continue;
 		}
 		if (len) --len;
-		for (j = sa[ra[i] - 1];
-			 *std::next(begin, i + len) == *std::next(begin, j + len);
-			 ++len);
+		for (j = sa[ra[i] - 1]; *std::next(begin, i + len) == *std::next(begin, j + len); ++len);
 		height[ra[i]] = len;
 	}
 
@@ -2816,9 +2719,7 @@ manacher(Iter begin, Iter end) {
 	odd[0] = 1;
 	for (size_t i = 1, b = 0, e = 1; i != n; ++i) {
 		if (i < e) odd[i] = std::min(odd[b + e - 1 - i], e - i);
-		while (odd[i] <= i && i + odd[i] < n &&
-			   *std::next(begin, i - odd[i]) ==
-				   *std::next(begin, i + odd[i])) ++odd[i];
+		while (odd[i] <= i && i + odd[i] < n && *std::next(begin, i - odd[i]) == *std::next(begin, i + odd[i])) ++odd[i];
 		if (i + odd[i] > e) {
 			b = i - odd[i] + 1;
 			e = i + odd[i];
@@ -2826,9 +2727,7 @@ manacher(Iter begin, Iter end) {
 	}
 	for (size_t i = 0, b = 0, e = 0; i != n; ++i) {
 		if (i < e) even[i] = std::min(even[b + e - i], e - i);
-		while (even[i] < i && i + even[i] < n &&
-			   *std::next(begin, i - even[i] - 1) ==
-				   *std::next(begin, i + even[i])) ++even[i];
+		while (even[i] < i && i + even[i] < n && *std::next(begin, i - even[i] - 1) == *std::next(begin, i + even[i])) ++even[i];
 		if (i + even[i] > e) {
 			b = i - even[i];
 			e = i + even[i];
@@ -2875,8 +2774,7 @@ public:
 		m_edges.push_back(Edge{u, v});
 		m_insertToAdj(m_edges.size() - 1);
 	}
-	template <typename W = Weight,
-			  typename = typename std::enable_if<std::is_same<W, Weight>::value>::type>
+	template <typename W = Weight, typename = typename std::enable_if<std::is_same<W, Weight>::value>::type>
 	typename std::enable_if<!std::is_void<W>::value, void>::type
 	insertEdge(size_t u, size_t v, const W &w) {
 		m_edges.push_back(Edge{u, v, w});
@@ -2905,10 +2803,7 @@ public:
 	/**
 	 * @return {{cut_verts, vbccs}, {bridges, ebccs}}
 	 */
-	inline std::pair<std::pair<std::vector<std::vector<size_t>>,
-							   std::vector<std::vector<size_t>>>,
-					 std::pair<std::vector<std::vector<size_t>>,
-							   std::vector<std::vector<size_t>>>>
+	inline std::pair<std::pair<std::vector<std::vector<size_t>>, std::vector<std::vector<size_t>>>, std::pair<std::vector<std::vector<size_t>>, std::vector<std::vector<size_t>>>>
 	tarjanCutAndBccs() const;
 
 	std::vector<size_t> toposort() const;
@@ -2921,8 +2816,7 @@ public:
 	std::vector<Weight> spfa(size_t src) const;
 
 	std::tuple<Weight, std::vector<bool>, std::vector<Weight>>
-	dinic(size_t src, size_t dst,
-		  Weight lim = std::numeric_limits<Weight>::max()) const;
+	dinic(size_t src, size_t dst, Weight lim = std::numeric_limits<Weight>::max()) const;
 
 protected:
 	std::vector<Edge> m_edges;
@@ -2948,9 +2842,8 @@ private:
 template <typename Weight, bool is_directed>
 std::vector<std::vector<size_t>>
 Graph<Weight, is_directed>::tarjanSccs() const {
-	static_assert(is_directed,
-				  "Tarjan's algorithm for strongly connected components "
-				  "is only applicable to directed graphs.");
+	static_assert(is_directed, "Tarjan's algorithm for strongly connected components "
+							   "is only applicable to directed graphs.");
 	std::vector<size_t> stk;
 	stk.reserve(m_adj.size());
 	std::vector<bool> in_stk(m_adj.size());
@@ -2990,15 +2883,11 @@ Graph<Weight, is_directed>::tarjanSccs() const {
 }
 
 template <typename Weight, bool is_directed>
-inline std::pair<std::pair<std::vector<std::vector<size_t>>,
-						   std::vector<std::vector<size_t>>>,
-				 std::pair<std::vector<std::vector<size_t>>,
-						   std::vector<std::vector<size_t>>>>
+inline std::pair<std::pair<std::vector<std::vector<size_t>>, std::vector<std::vector<size_t>>>, std::pair<std::vector<std::vector<size_t>>, std::vector<std::vector<size_t>>>>
 Graph<Weight, is_directed>::tarjanCutAndBccs() const {
-	static_assert(!is_directed,
-				  "Tarjan's algorithm for cut vertices, bridges "
-				  "and biconnected components is only applicable to "
-				  "undirected graphs.");
+	static_assert(!is_directed, "Tarjan's algorithm for cut vertices, bridges "
+								"and biconnected components is only applicable to "
+								"undirected graphs.");
 	std::vector<std::vector<size_t>> cut_verts, vbccs, bridges, ebccs;
 	std::vector<size_t> vbcc_stk, ebcc_stk;
 	std::vector<size_t> dfn(m_adj.size(), size_t(-1)), low(m_adj.size());
@@ -3057,8 +2946,7 @@ Graph<Weight, is_directed>::tarjanCutAndBccs() const {
 
 template <typename Weight, bool is_directed>
 inline std::vector<size_t> Graph<Weight, is_directed>::toposort() const {
-	static_assert(is_directed,
-				  "Topological sorting is only applicable to directed graphs.");
+	static_assert(is_directed, "Topological sorting is only applicable to directed graphs.");
 	std::vector<size_t> indeg(m_adj.size());
 	for (auto &edge : m_edges) ++indeg[edge.v];
 	std::vector<size_t> res, zero_indeg_verts;
@@ -3081,16 +2969,14 @@ inline std::vector<size_t> Graph<Weight, is_directed>::toposort() const {
 template <typename Weight, bool is_directed>
 inline std::vector<std::vector<size_t>>
 Graph<Weight, is_directed>::kruskal() const {
-	static_assert(!is_directed,
-				  "Kruskal's algorithm is only applicable to undirected graphs.");
+	static_assert(!is_directed, "Kruskal's algorithm is only applicable to undirected graphs.");
 	if (m_adj.size() < 2) return {};
 
 	std::vector<size_t> sorted(m_edges.size());
 	std::iota(sorted.begin(), sorted.end(), 0);
-	std::sort(sorted.begin(), sorted.end(),
-			  [&](size_t lhs, size_t rhs) {
-				  return (m_edges[lhs].w < m_edges[rhs].w);
-			  });
+	std::sort(sorted.begin(), sorted.end(), [&](size_t lhs, size_t rhs) {
+		return (m_edges[lhs].w < m_edges[rhs].w);
+	});
 
 	std::vector<size_t> dsu(m_adj.size());
 	std::iota(dsu.begin(), dsu.end(), 0);
@@ -3120,8 +3006,7 @@ Graph<Weight, is_directed>::kruskal() const {
 
 template <typename Weight, bool is_directed>
 inline std::vector<size_t> Graph<Weight, is_directed>::prim(size_t rt) const {
-	static_assert(!is_directed,
-				  "Prim algorithm is only applicable to undirected graphs.");
+	static_assert(!is_directed, "Prim algorithm is only applicable to undirected graphs.");
 	if (m_adj.size() < 2) return {};
 
 	std::vector<size_t> mst_edges;
@@ -3168,11 +3053,7 @@ inline std::vector<Weight> Graph<Weight, is_directed>::dijkstra(size_t src) cons
 		if (vis[frm]) continue;
 		vis[frm] = true;
 		for (auto i : m_adj[frm]) {
-			auto to = (is_directed
-						   ? m_edges[i].v
-						   : ((m_edges[i].u == frm)
-								  ? m_edges[i].v
-								  : m_edges[i].u));
+			auto to = (is_directed ? m_edges[i].v : ((m_edges[i].u == frm) ? m_edges[i].v : m_edges[i].u));
 			auto w = m_edges[i].w;
 			if (dist[to] > dist[frm] + w) {
 				pq.emplace(dist[to] = dist[frm] + w, to);
@@ -3226,6 +3107,8 @@ Graph<Weight, is_directed>::spfa(size_t src) const {
 			auto to = (is_directed
 						   ? m_edges[i].v
 						   : ((m_edges[i].u == frm) ? m_edges[i].v : m_edges[i].u));
+			if (is_directed &&
+				frm == m_edges[i].v && m_edges[i].u != m_edges[i].v) continue;
 			auto w = m_edges[i].w;
 			if (dist[to] > dist[frm] + w) {
 				dist[to] = dist[frm] + w;
@@ -3299,13 +3182,11 @@ floydMatMul(std::vector<std::vector<Weight>> weights) {
  */
 template <typename Weight>
 inline std::vector<size_t>
-shortestHamiltonianCycle(const std::vector<std::vector<Weight>> &adj_mat,
-						 Weight inf = std::numeric_limits<Weight>::max()) {
+shortestHamiltonianCycle(const std::vector<std::vector<Weight>> &adj_mat, Weight inf = std::numeric_limits<Weight>::max()) {
 	size_t n = adj_mat.size();
 	if (!n) return {};
 	if (n == 1) return {0};
-	auto dp = std::vector<std::vector<Weight>>(uint64_t(1) << n,
-											   std::vector<Weight>(n, inf));
+	auto dp = std::vector<std::vector<Weight>>(uint64_t(1) << n, std::vector<Weight>(n, inf));
 	auto pre = std::vector<std::vector<size_t>>(
 		uint64_t(1) << n,
 		std::vector<size_t>(n, size_t(-1)));
@@ -3348,17 +3229,13 @@ shortestHamiltonianCycle(const std::vector<std::vector<Weight>> &adj_mat,
 
 template <typename Weight>
 inline std::vector<size_t>
-shortestHamiltonianPath(const std::vector<std::vector<Weight>> &adj_mat,
-						size_t src = 0,
-						Weight inf = std::numeric_limits<Weight>::max()) {
+shortestHamiltonianPath(const std::vector<std::vector<Weight>> &adj_mat, size_t src = 0, Weight inf = std::numeric_limits<Weight>::max()) {
 
 	size_t n = adj_mat.size();
 	if (!n) return {};
 	if (n == 1) return {0};
-	auto dp = std::vector<std::vector<Weight>>(uint64_t(1) << n,
-											   std::vector<Weight>(n, inf));
-	auto pre = std::vector<std::vector<size_t>>(uint64_t(1) << n,
-												std::vector<size_t>(n, size_t(-1)));
+	auto dp = std::vector<std::vector<Weight>>(uint64_t(1) << n, std::vector<Weight>(n, inf));
+	auto pre = std::vector<std::vector<size_t>>(uint64_t(1) << n, std::vector<size_t>(n, size_t(-1)));
 	if (src != size_t(-1)) {
 		dp[uint64_t(1) << src][src] = 0;
 	} else {

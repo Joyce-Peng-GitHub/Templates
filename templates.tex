@@ -2628,6 +2628,8 @@ Graph<Weight, is_directed>::spfa(size_t src) const {
 			auto to = (is_directed
 						   ? m_edges[i].v
 						   : ((m_edges[i].u == frm) ? m_edges[i].v : m_edges[i].u));
+			if (is_directed &&
+				frm == m_edges[i].v && m_edges[i].u != m_edges[i].v) continue;
 			auto w = m_edges[i].w;
 			if (dist[to] > dist[frm] + w) {
 				dist[to] = dist[frm] + w;
