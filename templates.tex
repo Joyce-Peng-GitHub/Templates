@@ -2206,7 +2206,7 @@ public:
 
 	Graph(size_t n = 0) : m_adj(n) {}
 	Graph(size_t n, const std::vector<Edge> &edges)
-		: m_adj(n), m_edges(edges) { m_insertEdgesToAdj(); }
+		: m_edges(edges), m_adj(n) { m_insertEdgesToAdj(); }
 
 	void assign(size_t n) {
 		m_edges.clear();
@@ -2227,7 +2227,8 @@ public:
 		m_insertToAdj(m_edges.size() - 1);
 	}
 	template <typename W = Weight,
-			  typename = typename std::enable_if<std::is_same<W, Weight>::value>::type>
+			  typename = typename std::enable_if<
+				  std::is_same<W, Weight>::value>::type>
 	typename std::enable_if<!std::is_void<W>::value, void>::type
 	insertEdge(size_t u, size_t v, const W &w) {
 		m_edges.push_back(Edge{u, v, w});

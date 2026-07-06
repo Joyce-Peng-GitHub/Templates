@@ -2754,7 +2754,7 @@ public:
 
 	Graph(size_t n = 0) : m_adj(n) {}
 	Graph(size_t n, const std::vector<Edge> &edges)
-		: m_adj(n), m_edges(edges) { m_insertEdgesToAdj(); }
+		: m_edges(edges), m_adj(n) { m_insertEdgesToAdj(); }
 
 	void assign(size_t n) {
 		m_edges.clear();
@@ -2774,7 +2774,9 @@ public:
 		m_edges.push_back(Edge{u, v});
 		m_insertToAdj(m_edges.size() - 1);
 	}
-	template <typename W = Weight, typename = typename std::enable_if<std::is_same<W, Weight>::value>::type>
+	template <typename W = Weight,
+			  typename = typename std::enable_if<
+				  std::is_same<W, Weight>::value>::type>
 	typename std::enable_if<!std::is_void<W>::value, void>::type
 	insertEdge(size_t u, size_t v, const W &w) {
 		m_edges.push_back(Edge{u, v, w});
@@ -2803,7 +2805,10 @@ public:
 	/**
 	 * @return {{cut_verts, vbccs}, {bridges, ebccs}}
 	 */
-	inline std::pair<std::pair<std::vector<std::vector<size_t>>, std::vector<std::vector<size_t>>>, std::pair<std::vector<std::vector<size_t>>, std::vector<std::vector<size_t>>>>
+	inline std::pair<std::pair<std::vector<std::vector<size_t>>,
+							   std::vector<std::vector<size_t>>>,
+					 std::pair<std::vector<std::vector<size_t>>,
+							   std::vector<std::vector<size_t>>>>
 	tarjanCutAndBccs() const;
 
 	std::vector<size_t> toposort() const;
@@ -2816,7 +2821,8 @@ public:
 	std::vector<Weight> spfa(size_t src) const;
 
 	std::tuple<Weight, std::vector<bool>, std::vector<Weight>>
-	dinic(size_t src, size_t dst, Weight lim = std::numeric_limits<Weight>::max()) const;
+	dinic(size_t src, size_t dst,
+		  Weight lim = std::numeric_limits<Weight>::max()) const;
 
 protected:
 	std::vector<Edge> m_edges;
