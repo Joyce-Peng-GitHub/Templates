@@ -2601,6 +2601,7 @@ kmp(Iter text_begin, Iter text_end,
 	const typename std::iterator_traits<Iter>::value_type &sep = -1) {
 	size_t text_sz = std::distance(text_begin, text_end),
 		   pattern_sz = std::distance(pattern_begin, pattern_end);
+	if (pattern_sz > text_sz) return {};
 	auto seq = std::vector<typename std::iterator_traits<Iter>::value_type>(
 		text_sz + 1 + pattern_sz);
 	std::copy(pattern_begin, pattern_end, seq.begin());
