@@ -287,20 +287,6 @@ protected:
 private:
 };
 
-template <typename T, typename Cmp = std::less<>>
-struct Min {
-	inline const T &operator()(const T &lhs, const T &rhs) const {
-		return std::min(lhs, rhs, Cmp());
-	}
-};
-
-template <typename T, typename Cmp = std::less<>>
-struct Max {
-	inline const T &operator()(const T &lhs, const T &rhs) const {
-		return std::max(lhs, rhs, Cmp());
-	}
-};
-
 class Dsu {
 public:
 	Dsu(size_t n = 0) : m_fa_or_sz(n, -1) {}
@@ -353,67 +339,62 @@ protected:
 private:
 };
 
-template <typename _T, typename _Oper = Min<_T>>
+template <typename T, typename Oper>
 class SparseTable {
 public:
-	using Oper = _Oper;
-	using Elem = _T;
-	using Table = std::vector<std::vector<Elem>>;
+	SparseTable(std::vector<T> arr, Oper oper)
+		: m_oper(std::move(oper)),
+		  m_table(arr.empty() ? 1 : (floorLogn2(arr.size()) + 1)) {
+		m_table[0] = std::move(arr);
+		m_build();
+	}
+	SparseTable(std::vector<T> arr) : SparseTable(std::move(arr), Oper()) {}
+	SparseTable() : SparseTable(std::vector<T>()) {}
 
-	SparseTable(const Oper &oper = Oper()) : m_oper(oper) {}
-	template <typename Iter, typename = RequireInputIter<Iter>>
-	SparseTable(Iter begin, Iter end, const Oper &oper = Oper())
-		: m_oper(oper), m_data(std::distance(begin, end)) {
-		for (size_t i = 0; i != size(); ++i) {
-			m_data[i].resize(floorLogn2(size() - i) + 1);
-			m_data[i][0] = *(begin++);
-		}
-		for (size_t i = 1; (size_t(1) << i - 1) < size(); ++i) {
-			for (size_t j = 0; j + (size_t(1) << i) <= size(); ++j) {
-				m_data[j][i] = m_oper(m_data[j][i - 1], m_data[j + (size_t(1) << (i - 1))][i - 1]);
-			}
-		}
+	void assign(std::vector<T> arr, Oper oper) {
+		m_oper = std::move(oper);
+		m_table.resize(arr.empty() ? 1 : (floorLogn2(arr.size()) + 1));
+		m_table[0] = std::move(arr);
+		m_build();
 	}
 
-	inline void assign(const Oper &oper = Oper()) {
-		m_oper = oper;
-		m_data.clear();
-	}
-	template <typename Iter, typename = RequireInputIter<Iter>>
-	inline void assign(Iter begin, Iter end, const Oper &oper = Oper()) {
-		m_oper = oper;
-		m_data.resize(std::distance(begin, end));
-		for (size_t i = 0; i != size(); ++i) {
-			m_data[i].resize(floorLogn2(size() - i) + 1);
-			m_data[i][0] = *(begin++);
-		}
-		for (size_t i = 1; (size_t(1) << (i - 1)) < size(); ++i) {
-			for (size_t j = 0; j + (size_t(1) << i) <= size(); ++j) {
-				m_data[j][i] = m_oper(m_data[j][i - 1], m_data[j + (size_t(1) << (i - 1))][i - 1]);
-			}
-		}
+	void clear() noexcept {
+		m_table.resize(1);
+		m_table[0].clear();
 	}
 
-	inline void clear() noexcept { m_data.clear(); }
+	const std::vector<T> &data() const noexcept { return m_table[0]; }
+	size_t size() const noexcept { return data().size(); }
+	bool empty() const noexcept { return data().empty(); }
 
-	inline size_t size() const noexcept { return m_data.size(); }
-	inline bool empty() const noexcept { return m_data.empty(); }
+	const T &operator[](size_t pos) const {
+		assert(pos < size());
+		return data()[pos];
+	}
 
-	inline Elem query(size_t pos, size_t len) const {
-		if (pos >= m_data.size()) {
-			throw std::out_of_range("SparseTable::query: pos (which is " + std::to_string(pos) + ") > size() (which is " + std::to_string(m_data.size()) + ')');
-		}
-		if (len == 0) throw std::out_of_range("SparseTable::query: len == 0");
-		if (pos + len > size()) len = size() - pos;
+	T query(size_t pos, size_t len) const {
+		assert(len && pos + len <= size());
 		size_t log_len = floorLogn2(len);
-		return m_oper(m_data[pos][log_len], m_data[pos + len - (size_t(1) << log_len)][log_len]);
+		const auto &fst = m_table[log_len][pos];
+		const auto &sec = m_table[log_len][pos + len - (size_t(1) << log_len)];
+		return m_oper(fst, sec);
 	}
 
 protected:
 	Oper m_oper;
-	Table m_data; // m_data[i][j] maintains Oper(data[i, i + 2 ** j))
+	std::vector<std::vector<T>> m_table; // m_table[i][j] = m_oper[j, j + 2**i)
 
-private:
+	void m_build() {
+		assert(m_table.size());
+		for (size_t i = 1; i < m_table.size(); ++i) {
+			m_table[i].resize(size() - (size_t(1) << i) + 1);
+			for (size_t j = 0; j + (size_t(1) << i) <= size(); ++j) {
+				const auto &fst = m_table[i - 1][j];
+				const auto &sec = m_table[i - 1][j + (size_t(1) << (i - 1))];
+				m_table[i][j] = m_oper(fst, sec);
+			}
+		}
+	}
 };
 
 template <typename T, typename Cmp = std::less<T>>
