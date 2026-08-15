@@ -2783,6 +2783,13 @@ public:
 	const std::vector<std::vector<size_t>> &adj() const { return m_adj; }
 
 	/* Algorithms */
+	/**
+	 * @return {src, edges} where edges is the sequence of edge indices in the
+	 * Eulerian trail starting from src. If no such Eulerian trail exists,
+	 * return {size_t(-1), {}}.
+	 */
+	std::pair<size_t, std::vector<size_t>> hierholzer(size_t src = -1) const;
+
 	std::vector<std::vector<size_t>> tarjanSccs() const;
 	/**
 	 * @return {{cut_verts, vbccs}, {bridges, ebccs}}
@@ -2826,6 +2833,90 @@ protected:
 
 private:
 };
+
+template <typename Weight, bool is_directed>
+std::pair<size_t, std::vector<size_t>>
+Graph<Weight, is_directed>::hierholzer(size_t src) const {
+	std::array<size_t, 2> ends{size_t(-1), size_t(-1)};
+	if (is_directed) {
+		std::vector<size_t> in_degs(m_adj.size()), out_degs(m_adj.size());
+		for (const auto &edge : m_edges) {
+			++out_degs[edge.u];
+			++in_degs[edge.v];
+		}
+
+		for (size_t i = 0; i < m_adj.size(); ++i) {
+			if (in_degs[i] == out_degs[i]) continue;
+			if (in_degs[i] + 1 == out_degs[i]) {
+				if (~ends[0]) {
+					return std::make_pair(size_t(-1), std::vector<size_t>());
+				}
+				ends[0] = i;
+			} else if (in_degs[i] == out_degs[i] + 1) {
+				if (~ends[1]) {
+					return std::make_pair(size_t(-1), std::vector<size_t>());
+				}
+				ends[1] = i;
+			} else {
+				return std::make_pair(size_t(-1), std::vector<size_t>());
+			}
+		}
+		if (~src && ~ends[0] && src != ends[0]) {
+			return std::make_pair(size_t(-1), std::vector<size_t>());
+		}
+	} else {
+		std::vector<size_t> degs(m_adj.size());
+		for (const auto &edge : m_edges) {
+			++degs[edge.u];
+			++degs[edge.v];
+		}
+
+		for (size_t i = 0; i < m_adj.size(); ++i) {
+			if (!(degs[i] & 1)) continue;
+			if (~ends[0]) {
+				if (~ends[1]) {
+					return std::make_pair(size_t(-1), std::vector<size_t>());
+				}
+				ends[1] = i;
+			} else {
+				ends[0] = i;
+			}
+		}
+		if (~src && ~ends[0] && src != ends[0] && src != ends[1]) {
+			return std::make_pair(size_t(-1), std::vector<size_t>());
+		}
+	}
+	if (static_cast<bool>(~ends[0]) != static_cast<bool>(~ends[1])) {
+		return std::make_pair(size_t(-1), std::vector<size_t>());
+	}
+	if (src == size_t(-1)) {
+		src = (~ends[0] ? ends[0] : 0);
+	}
+	assert(~src && src < m_adj.size());
+
+	std::vector<size_t> idxs(m_adj.size());
+	std::vector<bool> used(m_edges.size());
+	std::vector<size_t> res;
+	res.reserve(m_edges.size());
+	std::function<void(size_t)> dfs = [&](size_t cur) -> void {
+		for (auto &i = idxs[cur]; i < m_adj[cur].size(); ++i) {
+			auto e = m_adj[cur][i];
+			if (used[e]) continue;
+			auto &edge = m_edges[e];
+			if (is_directed && edge.u != cur) continue;
+			auto nxt = ((edge.u == cur) ? edge.v : edge.u);
+			used[e] = true;
+			dfs(nxt);
+			res.push_back(e);
+		}
+	};
+	dfs(src);
+	if (res.size() != m_edges.size()) { // not connected
+		return std::make_pair(size_t(-1), std::vector<size_t>());
+	}
+	std::reverse(res.begin(), res.end());
+	return std::make_pair(src, res);
+}
 
 template <typename Weight, bool is_directed>
 std::vector<std::vector<size_t>>
