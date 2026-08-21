@@ -13,6 +13,7 @@
 #set par(first-line-indent: (amount: indent, all: true))
 #set heading(numbering: "1.")
 #set underline(offset: 2pt)
+#set page(numbering: "--- 1 ---")
 
 #set document(
   title: [Templates],
