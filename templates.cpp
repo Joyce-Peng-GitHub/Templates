@@ -342,6 +342,10 @@ private:
 template <typename T, typename Oper>
 class SparseTable {
 public:
+	/**
+	 * @pre oper must be associative (x oper (y oper z) == (x oper y) oper z)
+	 * and idempotent (x oper x == x).
+	 */
 	SparseTable(std::vector<T> arr, Oper oper)
 		: m_oper(std::move(oper)),
 		  m_table(arr.empty() ? 1 : (floorLogn2(arr.size()) + 1)) {
@@ -350,7 +354,6 @@ public:
 	}
 	SparseTable(std::vector<T> arr) : SparseTable(std::move(arr), Oper()) {}
 	SparseTable() : SparseTable(std::vector<T>()) {}
-
 	void assign(std::vector<T> arr, Oper oper) {
 		m_oper = std::move(oper);
 		m_table.resize(arr.empty() ? 1 : (floorLogn2(arr.size()) + 1));
