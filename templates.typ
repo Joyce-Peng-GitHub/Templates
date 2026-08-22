@@ -14,6 +14,7 @@
 #set heading(numbering: "1.")
 #set underline(offset: 2pt)
 #set page(numbering: "1")
+#show raw: set text(font: "Ubuntu Mono")
 
 #set document(
   title: [Templates],
