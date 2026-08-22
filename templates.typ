@@ -7,7 +7,7 @@
 #let proof = thmproof("proof", "Proof of")
 #let algorithm = thmbox("algorithm", "Algorithm")
 
-#set page(margin: 1cm)
+#set page(margin: 1.6cm)
 #set text(font: "New Computer Modern")
 #let indent = 2em
 #set par(first-line-indent: (amount: indent, all: true))
