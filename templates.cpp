@@ -2300,6 +2300,7 @@ std::vector<uint32_t> sieveOfEratosthenes(uint32_t max) {
 	if (max <= 1) return {};
 	auto not_prime = std::vector<bool>(max + 1);
 	std::vector<uint32_t> primes;
+	primes.reserve(max ? (3 * max / (floorLogn2(max) << 1)) : 0); // approximate number of primes
 	primes.emplace_back(2);
 	for (uint32_t i = 4; i <= max; i += 2) {
 		not_prime[i] = true;
@@ -2318,6 +2319,7 @@ std::vector<uint32_t> linearSieve(uint32_t max) {
 	if (max <= 1) return {};
 	auto not_prime = std::vector<bool>(max + 1);
 	std::vector<uint32_t> primes;
+	primes.reserve(max ? (3 * max / (floorLogn2(max) << 1)) : 0); // approximate number of primes
 	primes.emplace_back(2);
 	for (uint32_t i = 3; i <= max; i += 2) {
 		if (!not_prime[i]) primes.emplace_back(i);
