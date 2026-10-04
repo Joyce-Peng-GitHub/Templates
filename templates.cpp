@@ -155,16 +155,6 @@ inline __int128_t stolll(const std::string &str, std::size_t *pos = nullptr, int
 	return res;
 }
 
-template <typename T, typename Cmp = std::less<T>>
-inline T &minEq(T &lhs, const T &rhs, Cmp cmp = Cmp()) {
-	return (cmp(rhs, lhs) ? (lhs = rhs) : lhs);
-}
-
-template <typename T, typename Cmp = std::less<T>>
-inline T &maxEq(T &lhs, const T &rhs, Cmp cmp = Cmp()) {
-	return (cmp(lhs, rhs) ? (lhs = rhs) : lhs);
-}
-
 /**
  * @brief behaves as if it generates func[beg, end) and
  * 	performs std::lower_bound on it
@@ -2945,9 +2935,9 @@ Graph<Weight, is_directed>::tarjanSccs() const {
 			}
 			if (dfn[edge.v] == size_t(-1)) {
 				dfs(edge.v);
-				minEq(low[cur], low[edge.v]);
+				if (low[edge.v] < low[cur]) low[cur] = low[edge.v];
 			} else if (in_stk[edge.v]) {
-				minEq(low[cur], dfn[edge.v]);
+				if (dfn[edge.v] < low[cur]) low[cur] = dfn[edge.v];
 			}
 		}
 		if (dfn[cur] == low[cur]) {
@@ -2967,11 +2957,15 @@ Graph<Weight, is_directed>::tarjanSccs() const {
 }
 
 template <typename Weight, bool is_directed>
-inline std::pair<std::pair<std::vector<std::vector<size_t>>, std::vector<std::vector<size_t>>>, std::pair<std::vector<std::vector<size_t>>, std::vector<std::vector<size_t>>>>
+inline std::pair<std::pair<std::vector<std::vector<size_t>>,
+						   std::vector<std::vector<size_t>>>,
+				 std::pair<std::vector<std::vector<size_t>>,
+						   std::vector<std::vector<size_t>>>>
 Graph<Weight, is_directed>::tarjanCutAndBccs() const {
-	static_assert(!is_directed, "Tarjan's algorithm for cut vertices, bridges "
-								"and biconnected components is only applicable to "
-								"undirected graphs.");
+	static_assert(!is_directed,
+				  "Tarjan's algorithm for cut vertices, bridges "
+				  "and biconnected components is only applicable to "
+				  "undirected graphs.");
 	std::vector<std::vector<size_t>> cut_verts, vbccs, bridges, ebccs;
 	std::vector<size_t> vbcc_stk, ebcc_stk;
 	std::vector<size_t> dfn(m_adj.size(), size_t(-1)), low(m_adj.size());
@@ -2987,7 +2981,7 @@ Graph<Weight, is_directed>::tarjanCutAndBccs() const {
 			if (dfn[nxt] == size_t(-1)) {
 				++children;
 				dfs(cur, nxt);
-				minEq(low[cur], low[nxt]);
+				if (low[nxt] < low[cur]) low[cur] = low[nxt];
 				if (~pre ? (low[nxt] >= dfn[cur]) : (children > 1)) {
 					if (not_in_cut) {
 						not_in_cut = false;
@@ -3010,7 +3004,7 @@ Graph<Weight, is_directed>::tarjanCutAndBccs() const {
 					} while (vert != nxt);
 				}
 			} else if (nxt != pre || has_edge_to_pre) {
-				minEq(low[cur], dfn[nxt]);
+				if (dfn[nxt] < low[cur]) low[cur] = dfn[nxt];
 			} else {
 				has_edge_to_pre = true;
 			}

@@ -92,20 +92,6 @@ namespace std {
 }
 ```
 
-== $attach(<-, t: min)$ and $attach(<-, t: max)$
-
-```cpp
-template <typename T, typename Cmp = std::less<T>>
-inline T &minEq(T &lhs, const T &rhs, Cmp cmp = Cmp()) {
-	return (cmp(rhs, lhs) ? (lhs = rhs) : lhs);
-}
-
-template <typename T, typename Cmp = std::less<T>>
-inline T &maxEq(T &lhs, const T &rhs, Cmp cmp = Cmp()) {
-	return (cmp(lhs, rhs) ? (lhs = rhs) : lhs);
-}
-```
-
 == Binary Search
 
 ```cpp
@@ -2443,9 +2429,9 @@ Graph<Weight, is_directed>::tarjanSccs() const {
 			if (edge.u != cur) continue; // edges pointing to cur
 			if (dfn[edge.v] == size_t(-1)) {
 				dfs(edge.v);
-				minEq(low[cur], low[edge.v]);
+				if (low[edge.v] < low[cur]) low[cur] = low[edge.v];
 			} else if (in_stk[edge.v]) {
-				minEq(low[cur], dfn[edge.v]);
+				if (dfn[edge.v] < low[cur]) low[cur] = dfn[edge.v];
 			}
 		}
 		if (dfn[cur] == low[cur]) {
@@ -2533,7 +2519,7 @@ Graph<Weight, is_directed>::tarjanCutAndBccs() const {
 			if (dfn[nxt] == size_t(-1)) {
 				++children;
 				dfs(cur, nxt);
-				minEq(low[cur], low[nxt]);
+				if (low[nxt] < low[cur]) low[cur] = low[nxt];
 				if (~pre ? (low[nxt] >= dfn[cur]) : (children > 1)) {
 					if (not_in_cut) {
 						not_in_cut = false;
@@ -2556,7 +2542,7 @@ Graph<Weight, is_directed>::tarjanCutAndBccs() const {
 					} while (vert != nxt);
 				}
 			} else if (nxt != pre || has_edge_to_pre) {
-				minEq(low[cur], dfn[nxt]);
+				if (dfn[nxt] < low[cur]) low[cur] = dfn[nxt];
 			} else {
 				has_edge_to_pre = true;
 			}
