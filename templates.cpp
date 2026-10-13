@@ -2760,10 +2760,8 @@ public:
 		m_insertToAdj(m_edges.size() - 1);
 	}
 
-	void reserve(size_t n, size_t m) {
-		m_edges.reserve(m);
-		m_adj.reserve(n);
-	}
+	void reserveVertices(size_t n) { m_adj.reserve(n); }
+	void reserveEdges(size_t m) { m_edges.reserve(m); }
 
 	void clear() {
 		m_edges.clear();
