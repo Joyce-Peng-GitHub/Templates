@@ -2928,16 +2928,17 @@ Graph<Weight, is_directed>::tarjanSccs() const {
 		stk.emplace_back(cur);
 		in_stk[cur] = true;
 		low[cur] = (dfn[cur] = (tm++));
-		for (auto i : m_adjs_of[cur]) {
-			auto &edge = m_edges[i];
+		for (auto adj : m_adjs_of[cur]) {
+			auto &edge = m_edges[adj];
 			if (edge.u != cur) { // edges pointing to cur
 				continue;
 			}
-			if (dfn[edge.v] == size_t(-1)) {
-				dfs(edge.v);
-				if (low[edge.v] < low[cur]) low[cur] = low[edge.v];
-			} else if (in_stk[edge.v]) {
-				if (dfn[edge.v] < low[cur]) low[cur] = dfn[edge.v];
+			auto nxt = edge.v;
+			if (dfn[nxt] == size_t(-1)) {
+				dfs(nxt);
+				if (low[nxt] < low[cur]) low[cur] = low[nxt];
+			} else if (in_stk[nxt]) {
+				if (dfn[nxt] < low[cur]) low[cur] = dfn[nxt];
 			}
 		}
 		if (dfn[cur] == low[cur]) {
@@ -2976,8 +2977,11 @@ Graph<Weight, is_directed>::tarjanCutAndBccs() const {
 		ebcc_stk.emplace_back(cur);
 		size_t children = 0;
 		bool not_in_cut = true, has_edge_to_pre = false;
-		for (auto i : m_adj[cur]) {
-			size_t nxt = ((m_edges[i].u == cur) ? m_edges[i].v : m_edges[i].u);
+		for (auto adj : m_adjs_of[cur]) {
+			const auto &edge = m_edges[adj];
+			auto u = edge.u;
+			auto v = edge.v;
+			size_t nxt = ((u == cur) ? v : u);
 			if (dfn[nxt] == size_t(-1)) {
 				++children;
 				dfs(cur, nxt);
@@ -3024,7 +3028,8 @@ Graph<Weight, is_directed>::tarjanCutAndBccs() const {
 
 template <typename Weight, bool is_directed>
 inline std::vector<size_t> Graph<Weight, is_directed>::toposort() const {
-	static_assert(is_directed, "Topological sorting is only applicable to directed graphs.");
+	static_assert(is_directed,
+				  "Topological sorting is only applicable to directed graphs.");
 	std::vector<size_t> indeg(m_adjs_of.size());
 	for (auto &edge : m_edges) ++indeg[edge.v];
 	std::vector<size_t> res, zero_indeg_verts;
@@ -3032,12 +3037,13 @@ inline std::vector<size_t> Graph<Weight, is_directed>::toposort() const {
 		if (!indeg[i]) zero_indeg_verts.emplace_back(i);
 	}
 	while (zero_indeg_verts.size()) {
-		size_t frm = zero_indeg_verts.back();
+		size_t cur = zero_indeg_verts.back();
 		zero_indeg_verts.pop_back();
-		res.emplace_back(frm);
-		for (auto i : m_adjs_of[frm]) {
-			if (!(--indeg[m_edges[i].v])) {
-				zero_indeg_verts.emplace_back(m_edges[i].v);
+		res.emplace_back(cur);
+		for (auto adj : m_adjs_of[cur]) {
+			auto nxt = m_edges[adj].v;
+			if (!(--indeg[nxt])) {
+				zero_indeg_verts.emplace_back(nxt);
 			}
 		}
 	}
@@ -3047,7 +3053,8 @@ inline std::vector<size_t> Graph<Weight, is_directed>::toposort() const {
 template <typename Weight, bool is_directed>
 inline std::vector<std::vector<size_t>>
 Graph<Weight, is_directed>::kruskal() const {
-	static_assert(!is_directed, "Kruskal's algorithm is only applicable to undirected graphs.");
+	static_assert(!is_directed,
+				  "Kruskal's algorithm is only applicable to undirected graphs.");
 	if (m_adjs_of.size() < 2) return {};
 
 	std::vector<size_t> sorted(m_edges.size());
@@ -3062,7 +3069,7 @@ Graph<Weight, is_directed>::kruskal() const {
 		while (dsu[dsu[x]] != dsu[x]) dsu[x] = dsu[dsu[x]];
 		return dsu[x];
 	};
-	auto merge = [&](size_t to, size_t frm) { dsu[find(frm)] = find(to); };
+	auto merge = [&](size_t dst, size_t src) { dsu[find(src)] = find(dst); };
 
 	std::vector<size_t> msf_edges;
 	msf_edges.reserve(m_adjs_of.size() - 1);
@@ -3095,11 +3102,11 @@ inline std::vector<size_t> Graph<Weight, is_directed>::prim(size_t rt) const {
 	std::priority_queue<size_t, std::vector<size_t>, decltype(cmp)> pq(cmp);
 	std::vector<bool> vis(m_adjs_of.size());
 
-	auto visit = [&](size_t frm) -> void {
-		vis[frm] = true;
-		for (auto i : m_adjs_of[frm]) {
-			const auto &edge = m_edges[i];
-			if (!vis[(edge.u == frm ? edge.v : edge.u)]) pq.push(i);
+	auto visit = [&](size_t cur) -> void {
+		vis[cur] = true;
+		for (auto adj : m_adjs_of[cur]) {
+			const auto &edge = m_edges[adj];
+			if (!vis[(edge.u == cur ? edge.v : edge.u)]) pq.push(adj);
 		}
 	};
 
@@ -3117,24 +3124,30 @@ inline std::vector<size_t> Graph<Weight, is_directed>::prim(size_t rt) const {
 }
 
 template <typename Weight, bool is_directed>
-inline std::vector<Weight> Graph<Weight, is_directed>::dijkstra(size_t src) const {
+inline std::vector<Weight>
+Graph<Weight, is_directed>::dijkstra(size_t src) const {
 	using Adj = std::pair<Weight, size_t>; // (dist, vertex)
 	std::priority_queue<Adj, std::vector<Adj>, std::greater<Adj>> pq;
-	std::vector<Weight> dist(m_adjs_of.size(), std::numeric_limits<Weight>::max());
+	std::vector<Weight> dist(m_adjs_of.size(),
+							 std::numeric_limits<Weight>::max());
 	std::vector<bool> vis(m_adjs_of.size());
 
 	pq.emplace(0, src);
 	dist[src] = 0;
 	while (pq.size()) {
-		auto frm = pq.top().second;
+		auto cur = pq.top().second;
 		pq.pop();
-		if (vis[frm]) continue;
-		vis[frm] = true;
-		for (auto i : m_adjs_of[frm]) {
-			auto to = (is_directed ? m_edges[i].v : ((m_edges[i].u == frm) ? m_edges[i].v : m_edges[i].u));
-			auto w = m_edges[i].w;
-			if (dist[to] > dist[frm] + w) {
-				pq.emplace(dist[to] = dist[frm] + w, to);
+		if (vis[cur]) continue;
+		vis[cur] = true;
+		for (auto adj : m_adjs_of[cur]) {
+			const auto &edge = m_edges[adj];
+			if (is_directed && cur != edge.u) continue;
+			auto nxt = (is_directed
+							? edge.v
+							: ((edge.u == cur) ? edge.v : edge.u));
+			auto w = edge.w;
+			if (dist[nxt] > dist[cur] + w) {
+				pq.emplace(dist[nxt] = dist[cur] + w, nxt);
 			}
 		}
 	}
@@ -3145,7 +3158,8 @@ inline std::vector<Weight> Graph<Weight, is_directed>::dijkstra(size_t src) cons
 template <typename Weight, bool is_directed>
 inline std::vector<Weight>
 Graph<Weight, is_directed>::bellmanFord(size_t src) const {
-	std::vector<Weight> dist(m_adjs_of.size(), std::numeric_limits<Weight>::max());
+	std::vector<Weight> dist(m_adjs_of.size(),
+							 std::numeric_limits<Weight>::max());
 	auto relax = [&](size_t u, size_t v, Weight w) -> bool {
 		if (dist[u] != std::numeric_limits<Weight>::max() &&
 			dist[v] > dist[u] + w) {
@@ -3178,26 +3192,26 @@ Graph<Weight, is_directed>::spfa(size_t src) const {
 	dist[src] = 0;
 	q.emplace(src);
 	while (q.size()) {
-		auto frm = q.front();
-		inq[frm] = false;
+		auto cur = q.front();
+		inq[cur] = false;
 		q.pop();
-		for (auto i : m_adjs_of[frm]) {
-			auto to = (is_directed
-						   ? m_edges[i].v
-						   : ((m_edges[i].u == frm) ? m_edges[i].v : m_edges[i].u));
-			if (is_directed &&
-				frm == m_edges[i].v && m_edges[i].u != m_edges[i].v) continue;
-			auto w = m_edges[i].w;
-			if (dist[to] > dist[frm] + w) {
-				dist[to] = dist[frm] + w;
+		for (auto adj : m_adjs_of[cur]) {
+			const auto &edge = m_edges[adj];
+			if (is_directed && cur != edge.u) continue;
+			auto nxt = (is_directed
+							? edge.v
+							: ((edge.u == cur) ? edge.v : edge.u));
+			auto w = edge.w;
+			if (dist[nxt] > dist[cur] + w) {
+				dist[nxt] = dist[cur] + w;
 				/**
 				 * the shortest path between 2 vertices consists of at most
 				 * (n - 1) edgess
 				 */
-				if ((cnt[to] = cnt[frm] + 1) >= m_adjs_of.size()) return {};
-				if (!inq[to]) {
-					inq[to] = true;
-					q.emplace(to);
+				if ((cnt[nxt] = cnt[cur] + 1) >= m_adjs_of.size()) return {};
+				if (!inq[nxt]) {
+					inq[nxt] = true;
+					q.emplace(nxt);
 				}
 			}
 		}
@@ -3216,7 +3230,8 @@ floyd(std::vector<std::vector<Weight>> weights) {
 			for (k = 0; k != n; ++k) {
 				if (weights[j][i] != std::numeric_limits<Weight>::max() &&
 					weights[i][k] != std::numeric_limits<Weight>::max()) {
-					weights[j][k] = std::min(weights[j][k], weights[j][i] + weights[i][k]);
+					weights[j][k] = std::min(weights[j][k],
+											 weights[j][i] + weights[i][k]);
 				}
 			}
 		}
@@ -3232,8 +3247,8 @@ floydMatMul(std::vector<std::vector<Weight>> weights) {
 	assert(n == weights[0].size());
 	using Mat = std::vector<std::vector<Weight>>;
 	auto matMul = [](const Mat &lhs, const Mat &rhs) -> Mat {
-		auto &&n = lhs.size();
-		auto res = Mat(n, std::vector<Weight>(n, std::numeric_limits<Weight>::max()));
+		auto n = lhs.size();
+		Mat res(n, std::vector<Weight>(n, std::numeric_limits<Weight>::max()));
 		for (size_t i = 0, j, k; i != n; ++i) {
 			for (j = 0; j != n; ++j) {
 				for (k = 0; k != n; ++k) {
@@ -3246,7 +3261,7 @@ floydMatMul(std::vector<std::vector<Weight>> weights) {
 		}
 		return res;
 	};
-	auto res = Mat(n, std::vector<int32_t>(n, std::numeric_limits<Weight>::max()));
+	Mat res(n, std::vector<int32_t>(n, std::numeric_limits<Weight>::max()));
 	for (size_t i = 0; i != n; ++i) res[i][i] = 0;
 	for (; n; n >>= 1) {
 		if (n & 1) res = matMul(res, weights);
@@ -3260,14 +3275,15 @@ floydMatMul(std::vector<std::vector<Weight>> weights) {
  */
 template <typename Weight>
 inline std::vector<size_t>
-shortestHamiltonianCycle(const std::vector<std::vector<Weight>> &adj_mat, Weight inf = std::numeric_limits<Weight>::max()) {
+shortestHamiltonianCycle(const std::vector<std::vector<Weight>> &adj_mat,
+						 Weight inf = std::numeric_limits<Weight>::max()) {
 	size_t n = adj_mat.size();
 	if (!n) return {};
 	if (n == 1) return {0};
-	auto dp = std::vector<std::vector<Weight>>(uint64_t(1) << n, std::vector<Weight>(n, inf));
-	auto pre = std::vector<std::vector<size_t>>(
-		uint64_t(1) << n,
-		std::vector<size_t>(n, size_t(-1)));
+	std::vector<std::vector<Weight>> dp(uint64_t(1) << n,
+										std::vector<Weight>(n, inf));
+	std::vector<std::vector<size_t>> pre(uint64_t(1) << n,
+										 std::vector<size_t>(n, size_t(-1)));
 	dp[1][0] = 0;
 	for (uint64_t set = 1; set < (uint64_t(1) << n); set += 2) {
 		for (size_t cur = (set != 1); cur < n; ++cur) {
@@ -3307,13 +3323,16 @@ shortestHamiltonianCycle(const std::vector<std::vector<Weight>> &adj_mat, Weight
 
 template <typename Weight>
 inline std::vector<size_t>
-shortestHamiltonianPath(const std::vector<std::vector<Weight>> &adj_mat, size_t src = 0, Weight inf = std::numeric_limits<Weight>::max()) {
-
+shortestHamiltonianPath(const std::vector<std::vector<Weight>> &adj_mat,
+						size_t src = 0,
+						Weight inf = std::numeric_limits<Weight>::max()) {
 	size_t n = adj_mat.size();
 	if (!n) return {};
 	if (n == 1) return {0};
-	auto dp = std::vector<std::vector<Weight>>(uint64_t(1) << n, std::vector<Weight>(n, inf));
-	auto pre = std::vector<std::vector<size_t>>(uint64_t(1) << n, std::vector<size_t>(n, size_t(-1)));
+	std::vector<std::vector<Weight>> dp(uint64_t(1) << n,
+										std::vector<Weight>(n, inf));
+	std::vector<std::vector<size_t>> pre(uint64_t(1) << n,
+										 std::vector<size_t>(n, size_t(-1)));
 	if (src != size_t(-1)) {
 		dp[uint64_t(1) << src][src] = 0;
 	} else {
@@ -3391,19 +3410,20 @@ Graph<Weight, is_directed>::dinic(size_t src, size_t dst, Weight lim) const {
 		q.push_back(src);
 
 		while (q.size()) {
-			auto frm = q.front();
+			auto cur = q.front();
 			q.pop_front();
-			for (size_t e : m_adjs_of[frm]) {
-				size_t to;
-				if (m_edges[e].v != frm) {
-					to = m_edges[e].v, e <<= 1;
+			for (size_t e : m_adjs_of[cur]) {
+				const auto &edge = m_edges[e];
+				size_t nxt;
+				if (edge.v != cur) {
+					nxt = edge.v, e <<= 1;
 				} else {
-					to = m_edges[e].u, e = ((e << 1) | 1);
+					nxt = edge.u, e = ((e << 1) | 1);
 				}
-				if (!caps[e] || ~dep[to]) continue;
-				dep[to] = dep[frm] + 1;
-				if (to == dst) return;
-				q.push_back(to);
+				if (!caps[e] || ~dep[nxt]) continue;
+				dep[nxt] = dep[cur] + 1;
+				if (nxt == dst) return;
+				q.push_back(nxt);
 			}
 		}
 	};
@@ -3414,10 +3434,11 @@ Graph<Weight, is_directed>::dinic(size_t src, size_t dst, Weight lim) const {
 		Weight flow = 0;
 		for (auto &i = iter[cur]; i != m_adjs_of[cur].size(); ++i) {
 			size_t nxt, e = m_adjs_of[cur][i];
-			if (m_edges[e].v != cur) {
-				nxt = m_edges[e].v, e = (e << 1);
+			const auto &edge = edge;
+			if (edge.v != cur) {
+				nxt = edge.v, e = (e << 1);
 			} else {
-				nxt = m_edges[e].u, e = ((e << 1) | 1);
+				nxt = edge.u, e = ((e << 1) | 1);
 			}
 			if (!caps[e] || dep[cur] >= dep[nxt]) continue;
 			auto down = dfs(nxt, std::min(up - flow, caps[e]));
@@ -3445,24 +3466,26 @@ Graph<Weight, is_directed>::dinic(size_t src, size_t dst, Weight lim) const {
 	q.push_back(src);
 	min_cut[src] = false;
 	while (q.size()) {
-		auto frm = q.front();
+		auto cur = q.front();
 		q.pop_front();
-		for (size_t e : m_adjs_of[frm]) {
-			size_t to;
-			if (m_edges[e].v != frm) {
-				to = m_edges[e].v, e = (e << 1);
+		for (size_t e : m_adjs_of[cur]) {
+			size_t nxt;
+			if (m_edges[e].v != cur) {
+				nxt = m_edges[e].v, e = (e << 1);
 			} else {
-				to = m_edges[e].u, e = ((e << 1) | 1);
+				nxt = m_edges[e].u, e = ((e << 1) | 1);
 			}
-			if (caps[e] && min_cut[to]) {
-				q.push_back(to);
-				min_cut[to] = false;
+			if (caps[e] && min_cut[nxt]) {
+				q.push_back(nxt);
+				min_cut[nxt] = false;
 			}
 		}
 	}
 
 	std::vector<Weight> flows(m_edges.size());
-	for (size_t e = 0; e < m_edges.size(); ++e) flows[e] = m_edges[e].w - caps[e << 1];
+	for (size_t e = 0; e < m_edges.size(); ++e) {
+		flows[e] = m_edges[e].w - caps[e << 1];
+	}
 
 	return std::make_tuple(max_flow, std::move(min_cut), std::move(flows));
 }
