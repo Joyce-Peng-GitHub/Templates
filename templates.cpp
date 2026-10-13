@@ -2729,19 +2729,19 @@ public:
 	// When Weight is void, Edge does not has member w
 	using Edge = EdgeImpl<Weight>;
 
-	Graph(size_t n = 0) : m_adj(n) {}
+	Graph(size_t n = 0) : m_adjs_of(n) {}
 	Graph(size_t n, std::vector<Edge> edges)
-		: m_edges(std::move(edges)), m_adj(n) { m_insertEdgesToAdj(); }
+		: m_edges(std::move(edges)), m_adjs_of(n) { m_insertEdgesToAdj(); }
 
 	void assign(size_t n) {
 		m_edges.clear();
-		m_adj.resize(n);
-		for (auto &lst : m_adj) lst.clear();
+		m_adjs_of.resize(n);
+		for (auto &lst : m_adjs_of) lst.clear();
 	}
 	void assign(size_t n, std::vector<Edge> edges) {
 		m_edges = std::move(edges);
-		m_adj.resize(n);
-		for (auto &lst : m_adj) lst.clear();
+		m_adjs_of.resize(n);
+		for (auto &lst : m_adjs_of) lst.clear();
 		m_insertEdgesToAdj();
 	}
 
@@ -2760,20 +2760,22 @@ public:
 		m_insertToAdj(m_edges.size() - 1);
 	}
 
-	void reserveVertices(size_t n) { m_adj.reserve(n); }
+	void reserveVerts(size_t n) { m_adjs_of.reserve(n); }
 	void reserveEdges(size_t m) { m_edges.reserve(m); }
 
 	void clear() {
 		m_edges.clear();
-		m_adj.clear();
+		m_adjs_of.clear();
 	}
 
 	std::pair<size_t, size_t> size() const {
-		return std::make_pair(m_adj.size(), m_edges.size());
+		return std::make_pair(m_adjs_of.size(), m_edges.size());
 	}
 
 	const std::vector<Edge> &edges() const { return m_edges; }
-	const std::vector<std::vector<size_t>> &adj() const { return m_adj; }
+	const std::vector<std::vector<size_t>> &adjs_of_verts() const {
+		return m_adjs_of;
+	}
 
 	/* Algorithms */
 	/**
@@ -2808,14 +2810,14 @@ public:
 
 protected:
 	std::vector<Edge> m_edges;
-	std::vector<std::vector<size_t>> m_adj;
+	std::vector<std::vector<size_t>> m_adjs_of;
 
 	void m_insertToAdj(size_t idx) {
 		size_t sz_requirement = std::max(m_edges[idx].u, m_edges[idx].v) + 1;
-		if (sz_requirement > m_adj.size()) m_adj.resize(sz_requirement);
-		m_adj[m_edges[idx].u].emplace_back(idx);
+		if (sz_requirement > m_adjs_of.size()) m_adjs_of.resize(sz_requirement);
+		m_adjs_of[m_edges[idx].u].emplace_back(idx);
 		if (m_edges[idx].u != m_edges[idx].v) {
-			m_adj[m_edges[idx].v].emplace_back(idx);
+			m_adjs_of[m_edges[idx].v].emplace_back(idx);
 		}
 	}
 	void m_insertEdgesToAdj() {
@@ -2832,13 +2834,13 @@ std::pair<size_t, std::vector<size_t>>
 Graph<Weight, is_directed>::hierholzer(size_t src) const {
 	std::array<size_t, 2> ends{size_t(-1), size_t(-1)};
 	if (is_directed) {
-		std::vector<size_t> in_degs(m_adj.size()), out_degs(m_adj.size());
+		std::vector<size_t> in_degs(m_adjs_of.size()), out_degs(m_adjs_of.size());
 		for (const auto &edge : m_edges) {
 			++out_degs[edge.u];
 			++in_degs[edge.v];
 		}
 
-		for (size_t i = 0; i < m_adj.size(); ++i) {
+		for (size_t i = 0; i < m_adjs_of.size(); ++i) {
 			if (in_degs[i] == out_degs[i]) continue;
 			if (in_degs[i] + 1 == out_degs[i]) {
 				if (~ends[0]) {
@@ -2858,13 +2860,13 @@ Graph<Weight, is_directed>::hierholzer(size_t src) const {
 			return std::make_pair(size_t(-1), std::vector<size_t>());
 		}
 	} else {
-		std::vector<size_t> degs(m_adj.size());
+		std::vector<size_t> degs(m_adjs_of.size());
 		for (const auto &edge : m_edges) {
 			++degs[edge.u];
 			++degs[edge.v];
 		}
 
-		for (size_t i = 0; i < m_adj.size(); ++i) {
+		for (size_t i = 0; i < m_adjs_of.size(); ++i) {
 			if (!(degs[i] & 1)) continue;
 			if (~ends[0]) {
 				if (~ends[1]) {
@@ -2885,15 +2887,15 @@ Graph<Weight, is_directed>::hierholzer(size_t src) const {
 	if (src == size_t(-1)) {
 		src = (~ends[0] ? ends[0] : 0);
 	}
-	assert(~src && src < m_adj.size());
+	assert(~src && src < m_adjs_of.size());
 
-	std::vector<size_t> idxs(m_adj.size());
+	std::vector<size_t> idxs(m_adjs_of.size());
 	std::vector<bool> used(m_edges.size());
 	std::vector<size_t> res;
 	res.reserve(m_edges.size());
 	std::function<void(size_t)> dfs = [&](size_t cur) -> void {
-		for (auto &i = idxs[cur]; i < m_adj[cur].size(); ++i) {
-			auto e = m_adj[cur][i];
+		for (auto &i = idxs[cur]; i < m_adjs_of[cur].size(); ++i) {
+			auto e = m_adjs_of[cur][i];
 			if (used[e]) continue;
 			auto &edge = m_edges[e];
 			if (is_directed && edge.u != cur) continue;
@@ -2917,16 +2919,16 @@ Graph<Weight, is_directed>::tarjanSccs() const {
 	static_assert(is_directed, "Tarjan's algorithm for strongly connected components "
 							   "is only applicable to directed graphs.");
 	std::vector<size_t> stk;
-	stk.reserve(m_adj.size());
-	std::vector<bool> in_stk(m_adj.size());
-	std::vector<size_t> dfn(m_adj.size(), size_t(-1)), low(m_adj.size());
+	stk.reserve(m_adjs_of.size());
+	std::vector<bool> in_stk(m_adjs_of.size());
+	std::vector<size_t> dfn(m_adjs_of.size(), size_t(-1)), low(m_adjs_of.size());
 	std::vector<std::vector<size_t>> sccs;
 	size_t tm = 0;
 	std::function<void(size_t)> dfs = [&](size_t cur) -> void {
 		stk.emplace_back(cur);
 		in_stk[cur] = true;
 		low[cur] = (dfn[cur] = (tm++));
-		for (auto i : m_adj[cur]) {
+		for (auto i : m_adjs_of[cur]) {
 			auto &edge = m_edges[i];
 			if (edge.u != cur) { // edges pointing to cur
 				continue;
@@ -2948,7 +2950,7 @@ Graph<Weight, is_directed>::tarjanSccs() const {
 			} while (vert != cur);
 		}
 	};
-	for (size_t i = 0; i != m_adj.size(); ++i) {
+	for (size_t i = 0; i != m_adjs_of.size(); ++i) {
 		if (dfn[i] == size_t(-1)) dfs(i);
 	}
 	return sccs;
@@ -2966,7 +2968,7 @@ Graph<Weight, is_directed>::tarjanCutAndBccs() const {
 				  "undirected graphs.");
 	std::vector<std::vector<size_t>> cut_verts, vbccs, bridges, ebccs;
 	std::vector<size_t> vbcc_stk, ebcc_stk;
-	std::vector<size_t> dfn(m_adj.size(), size_t(-1)), low(m_adj.size());
+	std::vector<size_t> dfn(m_adjs_of.size(), size_t(-1)), low(m_adjs_of.size());
 	size_t tm = 0;
 	std::function<void(size_t, size_t)> dfs = [&](size_t pre, size_t cur) {
 		low[cur] = (dfn[cur] = (tm++));
@@ -2993,7 +2995,7 @@ Graph<Weight, is_directed>::tarjanCutAndBccs() const {
 					} while (vert != nxt);
 				}
 				if (low[nxt] > dfn[cur]) {
-					bridges.back().emplace_back(i);
+					bridges.back().emplace_back(adj);
 					ebccs.emplace_back();
 					size_t vert;
 					do {
@@ -3008,7 +3010,7 @@ Graph<Weight, is_directed>::tarjanCutAndBccs() const {
 			}
 		}
 	};
-	for (size_t i = 0; i != m_adj.size(); ++i) {
+	for (size_t i = 0; i != m_adjs_of.size(); ++i) {
 		if (dfn[i] == size_t(-1)) {
 			cut_verts.emplace_back();
 			bridges.emplace_back();
@@ -3023,30 +3025,30 @@ Graph<Weight, is_directed>::tarjanCutAndBccs() const {
 template <typename Weight, bool is_directed>
 inline std::vector<size_t> Graph<Weight, is_directed>::toposort() const {
 	static_assert(is_directed, "Topological sorting is only applicable to directed graphs.");
-	std::vector<size_t> indeg(m_adj.size());
+	std::vector<size_t> indeg(m_adjs_of.size());
 	for (auto &edge : m_edges) ++indeg[edge.v];
 	std::vector<size_t> res, zero_indeg_verts;
-	for (size_t i = 0; i != m_adj.size(); ++i) {
+	for (size_t i = 0; i != m_adjs_of.size(); ++i) {
 		if (!indeg[i]) zero_indeg_verts.emplace_back(i);
 	}
 	while (zero_indeg_verts.size()) {
 		size_t frm = zero_indeg_verts.back();
 		zero_indeg_verts.pop_back();
 		res.emplace_back(frm);
-		for (auto i : m_adj[frm]) {
+		for (auto i : m_adjs_of[frm]) {
 			if (!(--indeg[m_edges[i].v])) {
 				zero_indeg_verts.emplace_back(m_edges[i].v);
 			}
 		}
 	}
-	return ((res.size() == m_adj.size()) ? res : std::vector<size_t>());
+	return ((res.size() == m_adjs_of.size()) ? res : std::vector<size_t>());
 }
 
 template <typename Weight, bool is_directed>
 inline std::vector<std::vector<size_t>>
 Graph<Weight, is_directed>::kruskal() const {
 	static_assert(!is_directed, "Kruskal's algorithm is only applicable to undirected graphs.");
-	if (m_adj.size() < 2) return {};
+	if (m_adjs_of.size() < 2) return {};
 
 	std::vector<size_t> sorted(m_edges.size());
 	std::iota(sorted.begin(), sorted.end(), 0);
@@ -3054,7 +3056,7 @@ Graph<Weight, is_directed>::kruskal() const {
 		return (m_edges[lhs].w < m_edges[rhs].w);
 	});
 
-	std::vector<size_t> dsu(m_adj.size());
+	std::vector<size_t> dsu(m_adjs_of.size());
 	std::iota(dsu.begin(), dsu.end(), 0);
 	auto find = [&](size_t x) -> size_t {
 		while (dsu[dsu[x]] != dsu[x]) dsu[x] = dsu[dsu[x]];
@@ -3063,7 +3065,7 @@ Graph<Weight, is_directed>::kruskal() const {
 	auto merge = [&](size_t to, size_t frm) { dsu[find(frm)] = find(to); };
 
 	std::vector<size_t> msf_edges;
-	msf_edges.reserve(m_adj.size() - 1);
+	msf_edges.reserve(m_adjs_of.size() - 1);
 	for (auto i : sorted) {
 		if (find(m_edges[i].u) != find(m_edges[i].v)) {
 			msf_edges.emplace_back(i);
@@ -3083,26 +3085,26 @@ Graph<Weight, is_directed>::kruskal() const {
 template <typename Weight, bool is_directed>
 inline std::vector<size_t> Graph<Weight, is_directed>::prim(size_t rt) const {
 	static_assert(!is_directed, "Prim algorithm is only applicable to undirected graphs.");
-	if (m_adj.size() < 2) return {};
+	if (m_adjs_of.size() < 2) return {};
 
 	std::vector<size_t> mst_edges;
-	mst_edges.reserve(m_adj.size() - 1);
+	mst_edges.reserve(m_adjs_of.size() - 1);
 	auto cmp = [&](size_t lhs, size_t rhs) {
 		return (m_edges[lhs].w > m_edges[rhs].w);
 	};
 	std::priority_queue<size_t, std::vector<size_t>, decltype(cmp)> pq(cmp);
-	std::vector<bool> vis(m_adj.size());
+	std::vector<bool> vis(m_adjs_of.size());
 
 	auto visit = [&](size_t frm) -> void {
 		vis[frm] = true;
-		for (auto i : m_adj[frm]) {
+		for (auto i : m_adjs_of[frm]) {
 			const auto &edge = m_edges[i];
 			if (!vis[(edge.u == frm ? edge.v : edge.u)]) pq.push(i);
 		}
 	};
 
 	visit(rt);
-	while (pq.size() && mst_edges.size() + 1 < m_adj.size()) {
+	while (pq.size() && mst_edges.size() + 1 < m_adjs_of.size()) {
 		size_t i = pq.top();
 		pq.pop();
 		size_t u = m_edges[i].u, v = m_edges[i].v;
@@ -3118,8 +3120,8 @@ template <typename Weight, bool is_directed>
 inline std::vector<Weight> Graph<Weight, is_directed>::dijkstra(size_t src) const {
 	using Adj = std::pair<Weight, size_t>; // (dist, vertex)
 	std::priority_queue<Adj, std::vector<Adj>, std::greater<Adj>> pq;
-	std::vector<Weight> dist(m_adj.size(), std::numeric_limits<Weight>::max());
-	std::vector<bool> vis(m_adj.size());
+	std::vector<Weight> dist(m_adjs_of.size(), std::numeric_limits<Weight>::max());
+	std::vector<bool> vis(m_adjs_of.size());
 
 	pq.emplace(0, src);
 	dist[src] = 0;
@@ -3128,7 +3130,7 @@ inline std::vector<Weight> Graph<Weight, is_directed>::dijkstra(size_t src) cons
 		pq.pop();
 		if (vis[frm]) continue;
 		vis[frm] = true;
-		for (auto i : m_adj[frm]) {
+		for (auto i : m_adjs_of[frm]) {
 			auto to = (is_directed ? m_edges[i].v : ((m_edges[i].u == frm) ? m_edges[i].v : m_edges[i].u));
 			auto w = m_edges[i].w;
 			if (dist[to] > dist[frm] + w) {
@@ -3143,7 +3145,7 @@ inline std::vector<Weight> Graph<Weight, is_directed>::dijkstra(size_t src) cons
 template <typename Weight, bool is_directed>
 inline std::vector<Weight>
 Graph<Weight, is_directed>::bellmanFord(size_t src) const {
-	std::vector<Weight> dist(m_adj.size(), std::numeric_limits<Weight>::max());
+	std::vector<Weight> dist(m_adjs_of.size(), std::numeric_limits<Weight>::max());
 	auto relax = [&](size_t u, size_t v, Weight w) -> bool {
 		if (dist[u] != std::numeric_limits<Weight>::max() &&
 			dist[v] > dist[u] + w) {
@@ -3154,7 +3156,7 @@ Graph<Weight, is_directed>::bellmanFord(size_t src) const {
 	};
 
 	dist[src] = 0;
-	for (size_t cnt = 0; cnt != m_adj.size(); ++cnt) {
+	for (size_t cnt = 0; cnt != m_adjs_of.size(); ++cnt) {
 		bool flag = true;
 		for (auto &edge : m_edges) {
 			flag &= relax(edge.u, edge.v, edge.w);
@@ -3168,9 +3170,9 @@ Graph<Weight, is_directed>::bellmanFord(size_t src) const {
 template <typename Weight, bool is_directed>
 inline std::vector<Weight>
 Graph<Weight, is_directed>::spfa(size_t src) const {
-	std::vector<Weight> dist(m_adj.size(), std::numeric_limits<Weight>::max());
-	std::vector<bool> inq(m_adj.size());
-	std::vector<size_t> cnt(m_adj.size());
+	std::vector<Weight> dist(m_adjs_of.size(), std::numeric_limits<Weight>::max());
+	std::vector<bool> inq(m_adjs_of.size());
+	std::vector<size_t> cnt(m_adjs_of.size());
 	std::queue<size_t> q;
 
 	dist[src] = 0;
@@ -3179,7 +3181,7 @@ Graph<Weight, is_directed>::spfa(size_t src) const {
 		auto frm = q.front();
 		inq[frm] = false;
 		q.pop();
-		for (auto i : m_adj[frm]) {
+		for (auto i : m_adjs_of[frm]) {
 			auto to = (is_directed
 						   ? m_edges[i].v
 						   : ((m_edges[i].u == frm) ? m_edges[i].v : m_edges[i].u));
@@ -3192,7 +3194,7 @@ Graph<Weight, is_directed>::spfa(size_t src) const {
 				 * the shortest path between 2 vertices consists of at most
 				 * (n - 1) edgess
 				 */
-				if ((cnt[to] = cnt[frm] + 1) >= m_adj.size()) return {};
+				if ((cnt[to] = cnt[frm] + 1) >= m_adjs_of.size()) return {};
 				if (!inq[to]) {
 					inq[to] = true;
 					q.emplace(to);
@@ -3374,7 +3376,7 @@ template <typename Weight, bool is_directed>
 std::tuple<Weight, std::vector<bool>, std::vector<Weight>>
 Graph<Weight, is_directed>::dinic(size_t src, size_t dst, Weight lim) const {
 	std::vector<Weight> caps(m_edges.size() << 1);
-	std::vector<size_t> dep(m_adj.size()), iter(m_adj.size());
+	std::vector<size_t> dep(m_adjs_of.size()), iter(m_adjs_of.size());
 	std::deque<size_t> q;
 
 	for (size_t e = 0; e < m_edges.size(); ++e) caps[e << 1] = m_edges[e].w;
@@ -3391,7 +3393,7 @@ Graph<Weight, is_directed>::dinic(size_t src, size_t dst, Weight lim) const {
 		while (q.size()) {
 			auto frm = q.front();
 			q.pop_front();
-			for (size_t e : m_adj[frm]) {
+			for (size_t e : m_adjs_of[frm]) {
 				size_t to;
 				if (m_edges[e].v != frm) {
 					to = m_edges[e].v, e <<= 1;
@@ -3410,8 +3412,8 @@ Graph<Weight, is_directed>::dinic(size_t src, size_t dst, Weight lim) const {
 		if (cur == dst) return up;
 
 		Weight flow = 0;
-		for (auto &i = iter[cur]; i != m_adj[cur].size(); ++i) {
-			size_t nxt, e = m_adj[cur][i];
+		for (auto &i = iter[cur]; i != m_adjs_of[cur].size(); ++i) {
+			size_t nxt, e = m_adjs_of[cur][i];
 			if (m_edges[e].v != cur) {
 				nxt = m_edges[e].v, e = (e << 1);
 			} else {
@@ -3424,7 +3426,7 @@ Graph<Weight, is_directed>::dinic(size_t src, size_t dst, Weight lim) const {
 			caps[e] -= down, caps[e ^ 1] += down;
 			if (flow == up) return flow;
 		}
-		dep[cur] = m_adj.size();
+		dep[cur] = m_adjs_of.size();
 		return flow;
 	};
 
@@ -3438,14 +3440,14 @@ Graph<Weight, is_directed>::dinic(size_t src, size_t dst, Weight lim) const {
 		max_flow += cur_flow;
 	}
 
-	std::vector<bool> min_cut(m_adj.size(), true);
+	std::vector<bool> min_cut(m_adjs_of.size(), true);
 	q.clear();
 	q.push_back(src);
 	min_cut[src] = false;
 	while (q.size()) {
 		auto frm = q.front();
 		q.pop_front();
-		for (size_t e : m_adj[frm]) {
+		for (size_t e : m_adjs_of[frm]) {
 			size_t to;
 			if (m_edges[e].v != frm) {
 				to = m_edges[e].v, e = (e << 1);
