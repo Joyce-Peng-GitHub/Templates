@@ -2787,12 +2787,15 @@ public:
 
 	std::vector<std::vector<size_t>> tarjanSccs() const;
 	/**
-	 * @return {{cut_verts, vbccs}, {bridges, ebccs}}
+	 * @return {{cut_verts, vbccs}, {bridges, ebccs}} of each connected component
+	 * 
+	 * @note An isolated vertex is treated as a vbcc.
 	 */
-	inline std::pair<std::pair<std::vector<std::vector<size_t>>,
-							   std::vector<std::vector<size_t>>>,
-					 std::pair<std::vector<std::vector<size_t>>,
-							   std::vector<std::vector<size_t>>>>
+	inline std::vector<
+		std::pair<std::pair<std::vector<size_t>,
+							std::vector<std::vector<size_t>>>,
+				  std::pair<std::vector<size_t>,
+							std::vector<std::vector<size_t>>>>>
 	tarjanCutAndBccs() const;
 
 	std::vector<size_t> toposort() const;
@@ -2958,30 +2961,38 @@ Graph<Weight, is_directed>::tarjanSccs() const {
 }
 
 template <typename Weight, bool is_directed>
-inline std::pair<std::pair<std::vector<std::vector<size_t>>,
-						   std::vector<std::vector<size_t>>>,
-				 std::pair<std::vector<std::vector<size_t>>,
-						   std::vector<std::vector<size_t>>>>
+inline std::vector<
+	std::pair<std::pair<std::vector<size_t>,
+						std::vector<std::vector<size_t>>>,
+			  std::pair<std::vector<size_t>,
+						std::vector<std::vector<size_t>>>>>
 Graph<Weight, is_directed>::tarjanCutAndBccs() const {
 	static_assert(!is_directed,
 				  "Tarjan's algorithm for cut vertices, bridges "
 				  "and biconnected components is only applicable to "
 				  "undirected graphs.");
-	std::vector<std::vector<size_t>> cut_verts, vbccs, bridges, ebccs;
+	std::vector<
+		std::pair<std::pair<std::vector<size_t>,
+							std::vector<std::vector<size_t>>>,
+				  std::pair<std::vector<size_t>,
+							std::vector<std::vector<size_t>>>>>
+		ccs;
 	std::vector<size_t> vbcc_stk, ebcc_stk;
 	std::vector<size_t> dfn(m_adjs_of.size(), size_t(-1)), low(m_adjs_of.size());
 	size_t tm = 0;
 	std::function<void(size_t, size_t)> dfs = [&](size_t pre, size_t cur) {
+		auto &cc = ccs.back();
+		auto &cut_verts = cc.first.first;
+		auto &vbccs = cc.first.second;
+		auto &bridges = cc.second.first;
+		auto &ebccs = cc.second.second;
 		low[cur] = (dfn[cur] = (tm++));
 		vbcc_stk.emplace_back(cur);
 		ebcc_stk.emplace_back(cur);
 		size_t children = 0;
 		bool not_in_cut = true, has_edge_to_pre = false;
-		for (auto adj : m_adjs_of[cur]) {
-			const auto &edge = m_edges[adj];
-			auto u = edge.u;
-			auto v = edge.v;
-			size_t nxt = ((u == cur) ? v : u);
+		for (auto i : m_adjs_of[cur]) {
+			size_t nxt = ((m_edges[i].u == cur) ? m_edges[i].v : m_edges[i].u);
 			if (dfn[nxt] == size_t(-1)) {
 				++children;
 				dfs(cur, nxt);
@@ -2989,7 +3000,7 @@ Graph<Weight, is_directed>::tarjanCutAndBccs() const {
 				if (~pre ? (low[nxt] >= dfn[cur]) : (children > 1)) {
 					if (not_in_cut) {
 						not_in_cut = false;
-						cut_verts.back().emplace_back(cur);
+						cut_verts.emplace_back(cur);
 					}
 					vbccs.emplace_back(1, cur);
 					size_t vert;
@@ -2999,7 +3010,7 @@ Graph<Weight, is_directed>::tarjanCutAndBccs() const {
 					} while (vert != nxt);
 				}
 				if (low[nxt] > dfn[cur]) {
-					bridges.back().emplace_back(adj);
+					bridges.emplace_back(i);
 					ebccs.emplace_back();
 					size_t vert;
 					do {
@@ -3016,14 +3027,21 @@ Graph<Weight, is_directed>::tarjanCutAndBccs() const {
 	};
 	for (size_t i = 0; i != m_adjs_of.size(); ++i) {
 		if (dfn[i] == size_t(-1)) {
-			cut_verts.emplace_back();
-			bridges.emplace_back();
+			ccs.emplace_back();
 			dfs(-1, i);
-			if (vbcc_stk.size()) vbccs.emplace_back(std::move(vbcc_stk));
-			if (ebcc_stk.size()) ebccs.emplace_back(std::move(ebcc_stk));
+			if (vbcc_stk.size()) {
+				auto &vbccs = ccs.back().first.second;
+				vbccs.emplace_back(std::move(vbcc_stk));
+				vbcc_stk.clear();
+			}
+			if (ebcc_stk.size()) {
+				auto &ebccs = ccs.back().second.second;
+				ebccs.emplace_back(std::move(ebcc_stk));
+				ebcc_stk.clear();
+			}
 		}
 	}
-	return {{cut_verts, vbccs}, {bridges, ebccs}};
+	return ccs;
 }
 
 template <typename Weight, bool is_directed>
