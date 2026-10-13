@@ -2788,7 +2788,7 @@ public:
 	std::vector<std::vector<size_t>> tarjanSccs() const;
 	/**
 	 * @return {{cut_verts, vbccs}, {bridges, ebccs}} of each connected component
-	 * 
+	 *
 	 * @note An isolated vertex is treated as a vbcc.
 	 */
 	inline std::vector<
@@ -3109,7 +3109,8 @@ Graph<Weight, is_directed>::kruskal() const {
 
 template <typename Weight, bool is_directed>
 inline std::vector<size_t> Graph<Weight, is_directed>::prim(size_t rt) const {
-	static_assert(!is_directed, "Prim algorithm is only applicable to undirected graphs.");
+	static_assert(!is_directed,
+				  "Prim algorithm is only applicable to undirected graphs.");
 	if (m_adjs_of.size() < 2) return {};
 
 	std::vector<size_t> mst_edges;
