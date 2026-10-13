@@ -2730,16 +2730,16 @@ public:
 	using Edge = EdgeImpl<Weight>;
 
 	Graph(size_t n = 0) : m_adj(n) {}
-	Graph(size_t n, const std::vector<Edge> &edges)
-		: m_edges(edges), m_adj(n) { m_insertEdgesToAdj(); }
+	Graph(size_t n, std::vector<Edge> edges)
+		: m_edges(std::move(edges)), m_adj(n) { m_insertEdgesToAdj(); }
 
 	void assign(size_t n) {
 		m_edges.clear();
 		m_adj.resize(n);
 		for (auto &lst : m_adj) lst.clear();
 	}
-	void assign(size_t n, const std::vector<Edge> &edges) {
-		m_edges = edges;
+	void assign(size_t n, std::vector<Edge> edges) {
+		m_edges = std::move(edges);
 		m_adj.resize(n);
 		for (auto &lst : m_adj) lst.clear();
 		m_insertEdgesToAdj();
