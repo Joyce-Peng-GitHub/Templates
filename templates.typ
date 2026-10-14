@@ -1262,8 +1262,8 @@ inline bool exCrt(
 }
 ```
 
-Time complexity: $O(log m_i)$ for a single call. $O(n log(max_(i = 0)^(n - 1) m_i))$ for the entire equation system.
-Space complexity: $O(1)$.
+- Time complexity: $O(log m_i)$ for a single call. $O(n log(max_(i = 0)^(n - 1) m_i))$ for the entire equation system.
+- Space complexity: $O(1)$.
 
 == Derangement
 
@@ -2456,6 +2456,8 @@ Graph<Weight, is_directed>::tarjanSccs() const {
 }
 ```
 
+The time and space complexity are both $Theta(|V| + |E|)$.
+
 Tarjan's algorithm guarantees that the SCCs are numbered in the #strong[reverse topological order] of the DAG formed by contracting each SCC into a single vertex.
 
 === Tarjan for Cuts and Biconnected Components
@@ -2583,6 +2585,8 @@ Graph<Weight, is_directed>::tarjanCutAndBccs() const {
 	return ccs;
 }
 ```
+
+The time and space complexity are both $Theta(|V| + |E|)$.
 
 ==== Round-Square Tree
 
