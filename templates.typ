@@ -2249,7 +2249,7 @@ public:
 	std::vector<std::vector<size_t>> tarjanSccs() const;
 	/**
 	 * @return {{cut_verts, vbccs}, {bridges, ebccs}} of each connected component
-	 * 
+	 *
 	 * @note An isolated vertex is treated as a vbcc.
 	 */
 	inline std::vector<
@@ -2398,7 +2398,7 @@ Graph<Weight, is_directed>::hierholzer(size_t src) const {
 }
 ```
 
-== Tarjan
+== Connectivity
 
 === Tarjan for Strongly Connected Components
 
@@ -2495,7 +2495,7 @@ Similarly, we can define #emph[edge connectivity] of a graph $G$, denoted as $la
   $
     kappa(G) <= lambda(G) <= delta(G),
   $
-	where $delta(G) = min_(v in V(G)) deg(v)$.
+  where $delta(G) = min_(v in V(G)) deg(v)$.
 ]<thm:whitney-connectivity>
 
 ```cpp
@@ -2583,6 +2583,27 @@ Graph<Weight, is_directed>::tarjanCutAndBccs() const {
 	return ccs;
 }
 ```
+
+==== Round-Square Tree
+
+#figure(
+  caption: [Round-Square Tree],
+)[
+  #grid(
+    columns: 3,
+    image("figures/round_square-tree-1.svg"),
+    image("figures/round_square-tree-2.svg"),
+    image("figures/round_square-tree-3.svg"),
+  )
+]<fig:round_square-tree>
+
+#definition[Round-Square Tree][
+	Given an #strong[undirected connected] graph $G$, the #emph[round-suqare tree] $T$ of $G$ is constructed as follows:
+	+ Treat each vertex in $G$ as a #emph[round] vertex in $T$. Denote the set of all round vertices as $R = V(G)$.
+	+ Create a #emph[square] vertex in $T$ for each #strong[biconnected component]. Denote the set of all square vertices as $S$.
+	+ Build the tree $T$ over the vertex set $R union S$. For each $v in V(G)$ and each biconnected component $italic("vbcc") subset.eq V(G)$ s.t. $v in italic("vbcc")$ (note that one vertex may be included by multiple biconnected components), add an edge in $T$ between the round vertex corresponding to $v$ and the square vertex corresponding to $italic("vbcc")$.
+]<def:round_square-tree>
+
 
 == Topological Sort
 
@@ -2864,11 +2885,11 @@ Graph<Weight, is_directed>::spfa(size_t src) const {
 === Shortest Hamiltonian Path and Cycle
 
 #definition[Hamiltonian Path][
-	A #strong[path] in a graph is called a #emph[Hamiltonian path] if it visits every vertex exactly once.
+  A #strong[path] in a graph is called a #emph[Hamiltonian path] if it visits every vertex exactly once.
 ]<def:hamiltonian-path>
 
 #definition[Hamiltonian Cycle][
-	A #strong[cycle] in a graph is called a #emph[Hamiltonian cycle] if it is a Hamiltonian path.
+  A #strong[cycle] in a graph is called a #emph[Hamiltonian cycle] if it is a Hamiltonian path.
 ]<def:hamiltonian-cycle>
 
 ```cpp
@@ -3103,7 +3124,7 @@ Graph<Weight, is_directed>::dinic(size_t src, size_t dst, Weight lim) const {
 
 ```cpp
 namespace atcoder {
-	
+
 namespace internal {
 
 template <class E> struct csr {
