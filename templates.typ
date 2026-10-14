@@ -837,7 +837,7 @@ protected:
 };
 ```
 
-== ZKW Lazy Segment Tree
+=== ZKW Lazy Segment Tree
 
 ```cpp
 template <typename T, typename LazyTag = T, typename Oper = std::plus<T>, typename ApplyTag = std::plus<T>, typename MergeTags = std::plus<LazyTag>>
@@ -1109,7 +1109,7 @@ protected:
 }
 ```
 
-== Number Theory
+= Number Theory
 
 == Cantor Expansion
 
