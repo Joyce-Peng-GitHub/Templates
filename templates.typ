@@ -1109,6 +1109,212 @@ protected:
 }
 ```
 
+== GNU Policy-Based Data Structures
+
+PBDS does not support container interfaces introduced in C++11 and later standards. Specifically, PBDS containers do not support
+- Construction from `std::initialization_list` or a right-value reference.
+- `emplace`, `emplace_hint`, `insert(value_type &&)`, etc. that rely on move semantics.
+- Interfaces that rely on ranges,  like `insert_range`.
+
+=== Invalidation Guarantees
+
+There are two levels of iterator capabilities in PBDS:
++ A #emph[point-type] iterator is an iterator that refers to a specific element, as one returned through an associative-container's `find` method. Point-type iterators does not support any movement like `++`.
++ A #emph[range-type] iterator is an iterator that is used to go over a sequence of elements, as returned by a container's `begin` method.
+
+These are conceptual names and correspond to types `point_iterator` and `iterator` respectively.
+
+#figure(
+  caption: [Invalidation Guarantees of PBDS],
+)[
+  #table(
+    align: (center, left),
+    columns: 2,
+    strong[Tag], strong[Guarantee],
+    `basic_invalidation_guarantee`,
+    [Guarantees validation only when the container is not modified. Any modification to the container structure may cause invalidation.],
+
+    `point_invalidation_guarantee`,
+    [On the basis of `basic_invalidation_guarantee`, existing iterators can still be used for dereference as long as their corresponding elements are not removed. However, existing range-type iterators should #strong[not] be used for iteration anymore.],
+
+    `range_invalidation_guarantee`,
+    [On the basis of `point_invalidation_guarantee`, existing range-type iterators are guaranteed to remain in correct relative positions and can continue to be used for iteration.],
+  )
+]<tab:pbds-invalidation-guarantees>
+
+=== Associative Containers
+
+Use `__gnu_pbds::null_type` as the mapped type in an associative container to create sets.
+
+Associative containers do #strong[not] support multiset or multimap. Use `std::pair` as keys when needed.
+
+==== Balanced Binary Trees
+
+```cpp
+__gnu_pbds::tree<Key, Val, Cmp,
+	TreeTag, __gnu_pbds::tree_order_statistics_node_update> tree;
+```
+
+On the basis of `std::map`, `tree` in PBDS additionally support
+- `find_by_order` (0-based) and `order_of_key` (querying the number of keys strictly less than the given key) when `__gnu_pbds::tree_order_statistics_node_update` is specified.
+- Splitting and joining of trees.
+
+There are 3 kinds of implementation, specified by the tag:
+#figure(
+  caption: [Three Tags of `__gnu_pbds::tree`],
+)[
+  #table(
+    align: (center, center, left),
+    columns: 3,
+    strong[Tag], strong[Structure], strong[Feature],
+    `rb_tree_tag`, [Red-Black Tree], [All operations can be done in $O(log n)$ time in worst cases.],
+    `splay_tree_tag`, [Splay Tree], [The average time complexity of each operation is $O(log n)$.],
+    `ov_tree_tag`, [Ordered Vector], [$O(log n)$ finding, and $O(n)$ insertion and removal.],
+  )
+]<tab:pbds-tree-tags>
+
+==== Hash Tables
+
+#figure(
+  caption: [Hash Tables in PBDS],
+)[
+  #table(
+    align: (center, center, left),
+    columns: 3,
+    strong[Container], strong[Collision Handling], strong[Feature],
+    `gp_hash_table`,
+    [Open Addressing],
+    [`gp` stands for #strong[g]eneral-#strong[p]robing.\ Faster.\ Only provides `basic_invalidation_guarantee`.],
+
+    `cc_hash_table`,
+    [#strong[C]ollision #strong[C]haining],
+    [Provides stronger invalidation guarantee (`point_invalidation_guarantee`).],
+  )
+]<tab:pbds-hash-tables>
+
+Note that although `size` returns the number of elements stored in a hash table, `resize` operates on the underlying structure, setting the number of its #strong[slots] (for `gp_hash_table`) or #strong[buckets] (for `cc_hash_table`) to the given `new_size`. It is different from `std::unordered_map<>::reserve`, which reserves the space for the given number of #strong[elements]\; `resize` does #strong[not] handle the load factor automatically. That is, $ceil(n / lambda)$ slots/buckets are required to reserve space for $n$ #strong[elements], where $lambda$ is the #strong[load factor].
+
+==== Trie
+
+#figure(
+  caption: [Template Parameters of `__gnu_pbds::trie`],
+)[
+  #table(
+    columns: 4,
+    align: (center, center, left, left),
+
+    strong[Parameter], strong[Meaning], strong[Requirements], strong[Examples],
+    `Key`, [Key Type], [Copy-constructible.], [`std::string`],
+    `Mapped`,
+    [Value Type],
+    [Copy-constructible. `operator[]` requires default-constructibility in case the queried key does not exist.],
+    [`__gnu_pbds::null_type`, `int`, etc.],
+
+    `_ATraits`,
+    [Element Access Traits],
+    [
+      - Types:
+        - `size_type`.
+        - `key_type`.
+        - `const_iterator`: a #strong[forward iterator] to iterate in `key_type`.
+      - Values:
+        - `enum { max_size }`: the #strong[compile-time] domain size of elements in keys.
+      - Functions:
+        - `static const_iterator begin(const key_type &)`.
+      - `static const_iterator end(const key_type &)`.
+      - `size_type e_pos(*const_iterator)`: static or non-static const member function.
+    ],
+    table.cell(breakable: true)[
+      ```cpp
+       __gnu_pbds::
+       	trie_string_access_traits<
+       		std::vector<int>, 0, 9
+      >
+      ```
+    ],
+
+    `Tag`, [Tag of Trie Type], [Only supports `pat_trie_tag`.], [],
+    `Node_Update`,
+    [Node Update Policy],
+    [Only supports `null_node_update`, `trie_prefix_search_node_update` and `trie_order_statistics_node_update`],
+    [],
+    `_Alloc`, [Allocator], [Omitted.], [`std::allocator`],
+  )
+]<tab:trie-template-parameters>
+
+There are three node update policy:
+- `null_node_update`: provides only the basic interfaces.
+- `trie_prefix_search_node_update`: provides `prefix_range`, which returns a pair of iterators marking the left-closed right-open interval.
+- `trie_order_statistics_node_update`: provides `find_by_order` (0-based) and `order_of_key` (number of keys strictly less than the given key).
+#h(-indent) Different policies #strong[cannot] be stacked. A solution is to maintain a container of each additional policy.
+
+==== Self-Organizing Linked-List
+
+There are two update policies supported:
+- `lu_move_to_front_policy`: unconditionally moves an element to the front of the list every time it is accessed.
+- `lu_counter_policy`: Each element keeps a counter; when the counter reaches a threshold (`Max_Count`, default `5`), the element is moved to the front.
+
+These policies does not change the asymptotic complexity of linked-list operations. This container is suitable only for numerous small-scale secondary maps, e.g. as the mapped type in a hash table.
+
+Note that `list_update::size` is of $Theta(n)$ time complexity.
+
+=== Heap
+
+On the basis of `std::priority_queue`, `__gnu_pbds` additionally supports
+-
+- `push` returns a #strong[point-type] iterator of the inserted element.
+- `erase`: remove the element specified by a given iterator.
+- `join`: join two heaps.
+- `modify`: modify the element specified by a given iterator.
+- `begin` and `end`: return #strong[range-type] iterators.
+
+There are five types of heap implementation, specified by the tag:
+#figure(
+  caption: [Heap Tags of PBDS],
+)[
+  #show raw: it => text(
+    it.text.replace("_", "_\u{200b}"),
+  )
+
+  #table(
+    columns: 8,
+    align: center + horizon,
+
+    strong[Tag], strong[Underlying Structure], strong[Invalidation Guarantee], `push`, `pop`, `modify`, `erase`, `join`,
+    `binary_heap_tag`,
+
+    [Array-Based Binary Heap],
+    [Basic],
+    table.cell(colspan: 2)[Amortized $Theta(log n)$. Worst $Theta(n)$ (from capacity growth).],
+    table.cell(colspan: 3)[$Theta(n)$],
+
+    `pairing_heap_tag`,
+    [Paring Heap],
+    table.cell(rowspan: 4)[Point],
+    $O(1)$,
+    table.cell(colspan: 3)[Amortized $Theta(log n)$. Worst $Theta(n)$.],
+    $O(1)$,
+
+    `binomial_heap_tag`,
+    [Binomial Heap],
+    [Amortized $O(1)$. Worst $Theta(log n)$.],
+    table.cell(colspan: 4)[$Theta(log n)$],
+
+    `rc_binomial_heap_tag`, [Redundant Counter Binomial Heap], $O(1)$, table.cell(colspan: 4)[$Theta(log n)$],
+
+    `thin_heap_tag`,
+    [Thin Heap],
+    $O(1)$,
+    [Amortized $Theta(log n)$. Worst $Theta(n).$],
+    [
+      - Increase: Amortized $O(1)$. Worst $Theta(log n)$.
+      - Decrease: $O(log n)$.
+    ],
+    [Amortized $Theta(log n)$. Worst $Theta(n)$.],
+    $Theta(n)$,
+  )
+]<tab:pbds-heap-tags>
+
 = Number Theory
 
 == Cantor Expansion
@@ -2602,10 +2808,10 @@ The time and space complexity are both $Theta(|V| + |E|)$.
 ]<fig:round_square-tree>
 
 #definition[Round-Square Tree][
-	Given an #strong[undirected connected] graph $G$, the #emph[round-suqare tree] $T$ of $G$ is constructed as follows:
-	+ Treat each vertex in $G$ as a #emph[round] vertex in $T$. Denote the set of all round vertices as $R = V(G)$.
-	+ Create a #emph[square] vertex in $T$ for each #strong[biconnected component]. Denote the set of all square vertices as $S$.
-	+ Build the tree $T$ over the vertex set $R union S$. For each $v in V(G)$ and each biconnected component $italic("vbcc") subset.eq V(G)$ s.t. $v in italic("vbcc")$ (note that one vertex may be included by multiple biconnected components), add an edge in $T$ between the round vertex corresponding to $v$ and the square vertex corresponding to $italic("vbcc")$.
+  Given an #strong[undirected connected] graph $G$, the #emph[round-suqare tree] $T$ of $G$ is constructed as follows:
+  + Treat each vertex in $G$ as a #emph[round] vertex in $T$. Denote the set of all round vertices as $R = V(G)$.
+  + Create a #emph[square] vertex in $T$ for each #strong[biconnected component]. Denote the set of all square vertices as $S$.
+  + Build the tree $T$ over the vertex set $R union S$. For each $v in V(G)$ and each biconnected component $italic("vbcc") subset.eq V(G)$ s.t. $v in italic("vbcc")$ (note that one vertex may be included by multiple biconnected components), add an edge in $T$ between the round vertex corresponding to $v$ and the square vertex corresponding to $italic("vbcc")$.
 ]<def:round_square-tree>
 
 
