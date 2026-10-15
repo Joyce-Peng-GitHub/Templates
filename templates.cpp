@@ -2218,7 +2218,9 @@ inline int64_t exGcd(int64_t a, int64_t b, int64_t &x, int64_t &y) {
 inline int64_t modMulInv(int64_t x, int64_t mod) {
 	int64_t res, tmp;
 	exGcd(x, mod, res, tmp);
-	return ((res % mod + mod) % mod);
+	res %= mod;
+	if (res < 0) res += mod;
+	return res;
 }
 
 /**
@@ -3441,10 +3443,9 @@ shortestHamiltonianPath(const std::vector<std::vector<Weight>> &adj_mat,
  *
  * @note Time complexity:
  * - General networks: O(|V|^2 * |E|).
- * - Unit-capacity networks (e.g., bipartite matching): O(|E| * min(|V|^{2/3},
- * 	sqrt(|E|))).
- * - Unit-capacity networks where every vertex except src and dst has either
- * 	in-degree 1 or out-degree 1: O(|E| * sqrt(|V|)).
+ * - Unit-capacity networks: O(|E| * min(|V|^{2/3}, sqrt(|E|))).
+ * - Unit-capacity networks where every vertex except src and dst has in-degree
+ * 	1 or out-degree 1 (e.g., bipartite matching): O(|E| * sqrt(|V|)).
  * In practice, Dinic's algorithm is extremely efficient and typically runs
  * much faster than its theoretical worst-case upper bound on real-world graphs.
  */
