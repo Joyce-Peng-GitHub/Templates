@@ -1,6 +1,7 @@
 #include <bits/stdc++.h>
 
-template <typename Int, typename = typename std::enable_if<std::is_integral<Int>::value>::type>
+template <typename Int,
+		  typename = typename std::enable_if<std::is_integral<Int>::value>::type>
 inline void readInt(Int &res, FILE *file = stdin) {
 	res = 0;
 	bool neg = false;
@@ -12,11 +13,17 @@ inline void readInt(Int &res, FILE *file = stdin) {
 	} else if (ch == '+') {
 		ch = std::fgetc(file);
 	}
-	while (std::isdigit(ch)) {
-		res = (res << 1) + (res << 3) + (ch ^ '0');
-		ch = std::fgetc(file);
+	if (neg) {
+		while (std::isdigit(ch)) {
+			res = res * 10 - (ch ^ '0');
+			ch = std::fgetc(file);
+		}
+	} else {
+		while (std::isdigit(ch)) {
+			res = res * 10 + (ch ^ '0');
+			ch = std::fgetc(file);
+		}
 	}
-	if (neg) res = -res;
 }
 
 template <typename Uint, typename = typename std::enable_if<std::is_integral<Uint>::value && std::is_unsigned<Uint>::value>::type>
@@ -1907,13 +1914,16 @@ discretize(Iter begin, Iter end, std::vector<size_t> &res, Cmp cmp = Cmp(), Eq e
  *
  * @note O(n log n) time complexity.
  */
-template <typename Iter, typename Cmp = std::less<typename std::iterator_traits<Iter>::value_type>, typename = RequireFwdIter<Iter>>
+template <typename Iter,
+		  typename Cmp = std::less<typename std::iterator_traits<Iter>::value_type>,
+		  typename = RequireFwdIter<Iter>>
 std::vector<size_t> longestIncrSubseq(Iter begin, Iter end, Cmp cmp = Cmp()) {
 	auto cmpVal = [begin, end, &cmp](size_t lhs, size_t rhs) {
 		return cmp(*std::next(begin, lhs), *std::next(begin, rhs));
 	};
 	auto pre = std::vector<size_t>(std::distance(begin, end));
 	std::vector<size_t> min_end, res;
+	if (pre.empty()) return res;
 	min_end.reserve(pre.size());
 	for (size_t i = 0; begin != end; ++begin, ++i) {
 		size_t j = std::lower_bound(min_end.begin(), min_end.end(), i, cmpVal) -
@@ -2135,11 +2145,11 @@ uint64_t cantorExpand(const std::vector<T> &arr, Cmp cmp = Cmp(), Eq eq = Eq()) 
 	FenwickTree<size_t> tree{std::vector<size_t>(tot)};
 	std::vector<size_t> cnts(tot);
 	uint64_t res = 0;
-	uint64_t perm_num = 1; // number of distinct permutations of the suffix
+	__uint128_t perm_num = 1; // number of distinct permutations of the suffix
 	for (size_t i = n; i--;) {
 		++cnts[rks[i]];
 		res += perm_num * tree.query(0, rks[i]) / cnts[rks[i]];
-		perm_num = perm_num * cnts[rks[i]] / i;
+		perm_num = perm_num * (n - i) / cnts[rks[i]];
 		tree.modify(rks[i], 1);
 	}
 	return res;
@@ -2213,13 +2223,19 @@ inline int64_t modMulInv(int64_t x, int64_t mod) {
 
 /**
  * @return modular multiplicative inverse of [0, @c max].
- * @note assuming @c mod is a prime; inverse of 0 is undefined.
+ * @note assuming @c mod is a prime; inverse of multiples of @c mod (including 0)
+ * 	is undefined (0 as the placeholder).
  */
-std::vector<uint32_t> modMulInvs(uint32_t max, uint64_t mod) {
-	std::vector<uint32_t> invs(max + 1);
+std::vector<uint64_t> modMulInvs(uint32_t max, uint64_t mod) {
+	std::vector<uint64_t> invs(max + 1);
+	if (!max) return invs;
 	invs[1] = 1;
-	for (uint32_t i = 2; i <= max; ++i) {
-		invs[i] = (mod - mod / i) * invs[mod % i] % mod;
+	uint64_t i = 2;
+	for (; i < mod && i <= max; ++i) {
+		invs[i] = static_cast<__uint128_t>(mod - mod / i) * invs[mod % i] % mod;
+	}
+	for (; i <= max; ++i) {
+		invs[i] = invs[i % mod];
 	}
 	return invs;
 }
@@ -2328,11 +2344,17 @@ std::vector<uint32_t> linearSieve(uint32_t max) {
  * 	not_prime: bool array indicating whether i is not prime
  * 	primes: list of all primes <= max
  * 	low: low[i] = the largest power of the minimal prime factor of i that divides i
- * 	func_values: func_values[i] = func applied on the prime factorization of i
+ * 	func_values: func_values[i] = func applied on the prime factorization of i;
+ * 		func_values[0] is is value-initialized and does not represent f(0).
  * @tparam Ret return type of func
  * @tparam Func function to generate multiplicative function values
  * @param max maximum value to sieve
  * @param func function with signature Ret(uint32_t prime, uint32_t prime_pow)
+ * 	that func(p, p^e) is defined as f(p^e), where f is the multiplicative
+ * 	function, p is a prime number and e is an non-negative integer. Particularly,
+ * 	func(1, 1) should return f(1), which must satisfy f(n) == f(1) * f(n) for
+ * 	every positive integer n. Under the usual definition of multiplicative
+ * 	functions, f(1) = 1.
  */
 template <typename Ret, typename Func>
 inline std::tuple<std::vector<bool>, std::vector<uint32_t>, std::vector<uint32_t>, std::vector<Ret>>
@@ -2341,7 +2363,7 @@ linearSieve(uint32_t max, Func func = Func()) {
 
 	std::vector<bool> not_prime(max + 1);
 	std::vector<uint32_t> primes;
-	primes.reserve(max ? (3 * max / (floorLogn2(max) << 1)) : 0); // approximate number of primes
+	primes.reserve((max >= 2) ? (3 * max / (floorLogn2(max) << 1)) : 0); // approximate number of primes
 	std::vector<uint32_t> low(max + 1);
 	std::vector<Ret> res(max + 1);
 
@@ -2360,7 +2382,7 @@ linearSieve(uint32_t max, Func func = Func()) {
 			not_prime[x] = true;
 			if (i % prime) {
 				low[x] = prime;
-				res[x] = func(prime, prime) * res[i];
+				res[x] = res[prime] * res[i];
 			} else { // the minimal prime factor of x is prime
 				low[x] = low[i] * prime;
 				if (x == low[x]) {
@@ -2372,7 +2394,10 @@ linearSieve(uint32_t max, Func func = Func()) {
 			}
 		}
 	}
-	return {not_prime, primes, low, res};
+	return {std::move(not_prime),
+			std::move(primes),
+			std::move(low),
+			std::move(res)};
 }
 
 /**
@@ -2562,6 +2587,7 @@ inline void fft(std::vector<std::complex<Float>> &arr, bool inv = false) {
 template <typename Iter, typename = RequireFwdIter<Iter>>
 inline std::vector<size_t> prefFuncOf(Iter begin, Iter end) {
 	auto pi = std::vector<size_t>(std::distance(begin, end));
+	if (pi.empty()) return pi;
 	end = std::next(begin);
 	for (size_t i = 1, j; i < pi.size(); ++i, ++end) {
 		for (j = pi[i - 1]; j && *end != *std::next(begin, j); j = pi[j - 1]);
@@ -2622,7 +2648,7 @@ std::vector<Mod> hashOf(const std::string &s, Mod base = 233, Mod mod = 99324485
  */
 template <typename Iter>
 inline std::tuple<std::vector<size_t>, std::vector<size_t>, std::vector<size_t>>
-sufArrOf(Iter begin, Iter end) {
+suffArrOf(Iter begin, Iter end) {
 	std::vector<size_t> ra;
 	size_t unq = discretize(begin, end, ra).size(), n = ra.size();
 	auto cnt = std::vector<size_t>(n);
@@ -2675,7 +2701,10 @@ sufArrOf(Iter begin, Iter end) {
 			continue;
 		}
 		if (len) --len;
-		for (j = sa[ra[i] - 1]; *std::next(begin, i + len) == *std::next(begin, j + len); ++len);
+		for (j = sa[ra[i] - 1];
+			 i + len < n && j + len < n &&
+			 *std::next(begin, i + len) == *std::next(begin, j + len);
+			 ++len);
 		height[ra[i]] = len;
 	}
 
@@ -3280,7 +3309,7 @@ floydMatMul(std::vector<std::vector<Weight>> weights) {
 		}
 		return res;
 	};
-	Mat res(n, std::vector<int32_t>(n, std::numeric_limits<Weight>::max()));
+	Mat res(n, std::vector<Weight>(n, std::numeric_limits<Weight>::max()));
 	for (size_t i = 0; i != n; ++i) res[i][i] = 0;
 	for (; n; n >>= 1) {
 		if (n & 1) res = matMul(res, weights);
@@ -3453,7 +3482,7 @@ Graph<Weight, is_directed>::dinic(size_t src, size_t dst, Weight lim) const {
 		Weight flow = 0;
 		for (auto &i = iter[cur]; i != m_adjs_of[cur].size(); ++i) {
 			size_t nxt, e = m_adjs_of[cur][i];
-			const auto &edge = edge;
+			const auto &edge = m_edges[e];
 			if (edge.v != cur) {
 				nxt = edge.v, e = (e << 1);
 			} else {
