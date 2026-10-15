@@ -2222,9 +2222,9 @@ inline int64_t modMulInv(int64_t x, int64_t mod) {
 }
 
 /**
- * @return modular multiplicative inverse of [0, @c max].
- * @note assuming @c mod is a prime; inverse of multiples of @c mod (including 0)
- * 	is undefined (0 as the placeholder).
+ * @return modular multiplicative inverse of [0, max].
+ * @pre assuming mod is a prime; inverse of multiples of mod (including 0) is
+ * 	undefined (0 as the placeholder).
  */
 std::vector<uint64_t> modMulInvs(uint32_t max, uint64_t mod) {
 	std::vector<uint64_t> invs(max + 1);
@@ -2241,17 +2241,17 @@ std::vector<uint64_t> modMulInvs(uint32_t max, uint64_t mod) {
 }
 
 /**
- * @return modular multiplicative inverse of each element of @c arr.
- * @note assuming @c mod is a prime; inverse of 0 is undefined.
+ * @return modular multiplicative inverse of each element of arr.
+ * @pre assuming mod is a prime and none of arr is divisible by mod.
  */
 std::vector<uint64_t> modMulInvs(const std::vector<uint64_t> &arr, uint64_t mod) {
 	if (arr.empty()) return arr;
 	auto pref_prods = std::vector<uint64_t>(arr.size() + 1);
 	pref_prods[0] = 1;
 	for (size_t i = 0; i != arr.size(); ++i) {
-		pref_prods[i + 1] = pref_prods[i] * arr[i] % mod;
+		pref_prods[i + 1] = static_cast<__uint128_t>(pref_prods[i]) * arr[i] % mod;
 	}
-	uint64_t prod_inv = modMulInv(pref_prods.back(), mod);
+	__uint128_t prod_inv = modMulInv(pref_prods.back(), mod);
 	auto invs = std::vector<uint64_t>(arr.size());
 	for (size_t i = arr.size() - 1; ~i; --i) {
 		invs[i] = pref_prods[i] * prod_inv % mod;
@@ -2596,25 +2596,27 @@ inline std::vector<size_t> prefFuncOf(Iter begin, Iter end) {
 	return pi;
 }
 
-template <typename Iter>
+template <typename TxtIter, typename PtnIter,
+		  typename = RequireFwdIter<TxtIter>, typename = RequireFwdIter<PtnIter>>
 inline std::vector<size_t>
-kmp(Iter text_begin, Iter text_end,
-	Iter pattern_begin, Iter pattern_end,
-	const typename std::iterator_traits<Iter>::value_type &sep = -1) {
-	size_t text_sz = std::distance(text_begin, text_end),
-		   pattern_sz = std::distance(pattern_begin, pattern_end);
-	if (pattern_sz > text_sz) return {};
-	auto seq = std::vector<typename std::iterator_traits<Iter>::value_type>(
-		text_sz + 1 + pattern_sz);
-	std::copy(pattern_begin, pattern_end, seq.begin());
-	std::copy(text_begin, text_end, seq.end() - text_sz);
-	seq[pattern_sz] = sep;
-	auto pi = prefFuncOf(seq.begin(), seq.end());
-	std::vector<size_t> res;
-	for (size_t i = (pattern_sz << 1); i != pi.size(); ++i) {
-		if (pi[i] == pattern_sz) res.emplace_back(i - (pattern_sz << 1));
+kmp(TxtIter txt_beg, TxtIter txt_end,
+	PtnIter ptn_beg, PtnIter ptn_end) {
+	size_t txt_sz = std::distance(txt_beg, txt_end),
+		   ptn_sz = std::distance(ptn_beg, ptn_end);
+	std::vector<size_t> occs;
+	if (!ptn_sz || ptn_sz > txt_sz) return occs;
+	auto pi = prefFuncOf(ptn_beg, ptn_end);
+	size_t i = 0, j = 0;
+	auto iter = txt_beg;
+	for (; i < txt_sz; ++i, ++iter) {
+		while (j && *iter != *std::next(ptn_beg, j)) j = pi[j - 1];
+		if (*iter == *std::next(ptn_beg, j)) ++j;
+		if (j == ptn_sz) {
+			occs.push_back(i + 1 - ptn_sz);
+			j = pi[j - 1];
+		}
 	}
-	return res;
+	return occs;
 }
 
 template <typename Iter>
@@ -3335,12 +3337,13 @@ shortestHamiltonianCycle(const std::vector<std::vector<Weight>> &adj_mat,
 	dp[1][0] = 0;
 	for (uint64_t set = 1; set < (uint64_t(1) << n); set += 2) {
 		for (size_t cur = (set != 1); cur < n; ++cur) {
-			if (!(set & (1 << cur))) continue;
+			if (!(set & (uint64_t(1) << cur))) continue;
+			if (dp[set][cur] == inf) continue;
 			for (size_t nxt = 1; nxt < n; ++nxt) {
-				if ((set & (1 << nxt)) || adj_mat[cur][nxt] == inf) {
+				if ((set & (uint64_t(1) << nxt)) || adj_mat[cur][nxt] == inf) {
 					continue;
 				}
-				uint64_t nxt_set = set | (1 << nxt);
+				uint64_t nxt_set = set | (uint64_t(1) << nxt);
 				if (dp[set][cur] + adj_mat[cur][nxt] < dp[nxt_set][nxt]) {
 					pre[nxt_set][nxt] = cur;
 					dp[nxt_set][nxt] = dp[set][cur] + adj_mat[cur][nxt];
@@ -3349,20 +3352,23 @@ shortestHamiltonianCycle(const std::vector<std::vector<Weight>> &adj_mat,
 		}
 	}
 	uint64_t full_set = (uint64_t(1) << n) - 1;
-	size_t last = 1;
-	for (size_t i = 2; i < n; ++i) {
-		if (adj_mat[i][0] != inf &&
-			dp[full_set][i] + adj_mat[i][0] <
-				dp[full_set][last] + adj_mat[last][0]) {
+	auto best = inf;
+	size_t last = -1;
+	for (size_t i = 1; i < n; ++i) {
+		if (dp[full_set][i] == inf || adj_mat[i][0] == inf) continue;
+		auto cost = dp[full_set][i] + adj_mat[i][0];
+		if (cost < best) {
+			best = cost;
 			last = i;
 		}
 	}
+	if (last == size_t(-1)) return {};
 	std::vector<size_t> res;
 	res.reserve(n);
 	while (full_set) {
 		res.emplace_back(last);
 		size_t pre_last = pre[full_set][last];
-		full_set ^= (1 << last);
+		full_set ^= (uint64_t(1) << last);
 		last = pre_last;
 	}
 	std::reverse(res.begin(), res.end());
@@ -3427,21 +3433,27 @@ shortestHamiltonianPath(const std::vector<std::vector<Weight>> &adj_mat,
 }
 
 /**
- * @return {max flow, min cut, flows} from src to dst
- * min_cut[i] == true iff i is in the sink partition.
- * flows[i] is net flow from edges[i].u to edge[i].v.
+ * @return {limited max flow, min cut, flows} from src to dst
+ * - min_cut[i] == true iff i is unreachable from src in the residual network.
+ * 	Particularly, the returned flow equals the unrestricted maximum flow iff
+ * 	min_cut[dst] == true. In that case, min_cut describes a minimum cut, with
+ * 	true denoting the sink side.
  *
  * @note Time complexity:
  * - General networks: O(|V|^2 * |E|).
- * - Unit capacity networks (e.g., bipartite matching): O(|E| * sqrt(|V|)).
- * - Networks where all edge capacities are 1, and every node (except src/dst)
- * has either in-degree 1 or out-degree 1: O(|E| * min(|V|^{2/3}, sqrt(|E|))).
+ * - Unit-capacity networks (e.g., bipartite matching): O(|E| * min(|V|^{2/3},
+ * 	sqrt(|E|))).
+ * - Unit-capacity networks where every vertex except src and dst has either
+ * 	in-degree 1 or out-degree 1: O(|E| * sqrt(|V|)).
  * In practice, Dinic's algorithm is extremely efficient and typically runs
  * much faster than its theoretical worst-case upper bound on real-world graphs.
  */
 template <typename Weight, bool is_directed>
 std::tuple<Weight, std::vector<bool>, std::vector<Weight>>
 Graph<Weight, is_directed>::dinic(size_t src, size_t dst, Weight lim) const {
+	assert(src != dst);
+	assert(lim >= Weight());
+
 	std::vector<Weight> caps(m_edges.size() << 1);
 	std::vector<size_t> dep(m_adjs_of.size()), iter(m_adjs_of.size());
 	std::deque<size_t> q;
