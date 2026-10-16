@@ -1391,6 +1391,33 @@ inline int64_t exGcd(int64_t a, int64_t b, int64_t &x, int64_t &y) {
 
 == Modular Multiplicative Inverse
 
+#definition[Modular Multiplicative Inverse][
+  Let $m$ be the modulus and $x$ be an integer. An integer $y$ is called a #emph[multiplicative inverse of $x$ modulo $m$] if
+  $
+    (y dot x) mod m = 1.
+  $
+  #h(-indent) Denote $y mod m$ as $x^(-1) mod m$. It can be proved that $x^(-1) mod m$ exists iff $x bot m$, and, for every given $x$, $x^(-1) mod m$ is #strong[unique] if exists.
+]<def:modular-multiplicative-inverse>
+
+#theorem[Fermat's Little Theorem][
+  Let $p$ be a prime number.
+
+  If an integer $a divides.not p$, then
+  $
+    a^(p - 1) equiv 1 quad (mod p).
+  $
+
+  For any $a in ZZ$,
+  $
+    a^p equiv a quad (mod p).
+  $
+]<thm:fermat-little-theorem>
+
+By @thm:fermat-little-theorem, if the modulus is a prime number $p$, then an integer $x$ has multiplicative inverses iff $p divides.not x$ (including $x != 0$), and
+$
+	x^(-1) equiv x^(p - 2) quad (mod p).
+$
+
 ```cpp
 /**
  * @note assuming gcd(x, mod) == 1.
