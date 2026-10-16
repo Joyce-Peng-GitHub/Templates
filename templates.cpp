@@ -2854,12 +2854,84 @@ public:
 			dfns,  // dfns[i]: the heavy-light DFS order of vertex i.
 			verts; // verts[i]: the i-th vertex in the heavy-light DFS order.
 
-		size_t queryLcaOf(size_t u, size_t v) const {
+		size_t lcaOf(size_t u, size_t v) const noexcept {
 			while (tops[u] != tops[v]) {
 				if (deps[tops[u]] < deps[tops[v]]) std::swap(u, v);
 				u = prts[tops[u]];
 			}
 			return ((deps[u] < deps[v]) ? u : v);
+		}
+
+		/**
+		 * @return [beg, end) in the DFS order where the subtree rooted at rt
+		 * 	lies.
+		 */
+		std::pair<size_t, size_t> subtreeRangeOf(size_t rt) const noexcept {
+			return {dfns[rt], dfns[rt] + szs[rt]};
+		}
+
+		/**
+		 * @return number of edges in the path between u and v.
+		 */
+		size_t distOf(size_t u, size_t v) const noexcept {
+			auto lca = lcaOf(u, v);
+			return ((deps[u] - deps[lca]) + (deps[v] - deps[lca]));
+		}
+
+		size_t ancOf(size_t cur, size_t step = 1,
+					 bool strict = true) const noexcept {
+			if (step > deps[cur]) return (strict ? -1 : verts[0]);
+			while (step > deps[cur] - deps[tops[cur]]) {
+				step -= deps[cur] - deps[tops[cur]] + 1;
+				cur = prts[tops[cur]];
+			}
+			return verts[dfns[cur] - step];
+		}
+
+		/**
+		 * @return the step-th vertex on the path from src to dst.
+		 */
+		size_t pathVertAt(size_t src, size_t dst, size_t step,
+						  bool strict = true) const noexcept {
+			auto lca = lcaOf(src, dst);
+			auto up_len = deps[src] - deps[lca];
+			auto dn_len = deps[dst] - deps[lca];
+			if (step > up_len + dn_len) return (strict ? -1 : dst);
+			if (step <= up_len) return ancOf(src, step);
+			return ancOf(dst, up_len + dn_len - step);
+		}
+
+		/**
+		 * @param edge_mode Should be set to true if each vertex has a weight
+		 * 	corresponding to the edge pointing to its parent. In that case,
+		 * 	the lca should be excluded from the returned path.
+		 *
+		 * @return [beg, end) segments from src to dst. An upward segment is
+		 * 	stored as {end, beg}, while a downward one {beg, end}.
+		 */
+		std::vector<std::pair<size_t, size_t>>
+		pathSegsOf(size_t src, size_t dst, bool edge_mode = false) const {
+			std::vector<std::pair<size_t, size_t>> up, dn;
+			while (tops[src] != tops[dst]) {
+				if (deps[tops[src]] >= deps[tops[dst]]) {
+					up.emplace_back(dfns[src] + 1, dfns[tops[src]]);
+					src = prts[tops[src]];
+				} else {
+					dn.emplace_back(dfns[tops[dst]], dfns[dst] + 1);
+					dst = prts[tops[dst]];
+				}
+			}
+			auto beg = std::min(dfns[src], dfns[dst]) + edge_mode;
+			auto end = std::max(dfns[src], dfns[dst]) + 1;
+			if (beg < end) {
+				if (deps[src] <= deps[dst]) {
+					up.emplace_back(beg, end);
+				} else {
+					up.emplace_back(end, beg);
+				}
+			}
+			up.insert(up.end(), dn.rbegin(), dn.rend());
+			return up;
 		}
 	};
 	/**
