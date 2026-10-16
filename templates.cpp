@@ -2844,6 +2844,30 @@ public:
 	dinic(size_t src, size_t dst,
 		  Weight lim = std::numeric_limits<Weight>::max()) const;
 
+	struct Hld {
+		std::vector<size_t>
+			prts,  // prts[i]: parent of vertex i; prts[rt] = rt.
+			szs,   // szs[i]: size of the subtree rooted at vertex i.
+			deps,  // deps[i]: depth of vertex i.
+			hchs,  // hchs[i]: the heavy child of vertex i.
+			tops,  // tops[i]: top of the heavy path where vertex i belongs.
+			dfns,  // dfns[i]: the heavy-light DFS order of vertex i.
+			verts; // verts[i]: the i-th vertex in the heavy-light DFS order.
+
+		size_t queryLcaOf(size_t u, size_t v) const {
+			while (tops[u] != tops[v]) {
+				if (deps[tops[u]] < deps[tops[v]]) std::swap(u, v);
+				u = prts[tops[u]];
+			}
+			return ((deps[u] < deps[v]) ? u : v);
+		}
+	};
+	/**
+	 * @pre The graph is a tree. If is_directed == true, every edge must point
+	 * 	from parent to child when rooted at rt.
+	 */
+	Hld hld(size_t rt) const;
+
 protected:
 	std::vector<Edge> m_edges;
 	std::vector<std::vector<size_t>> m_adjs_of;
@@ -3549,4 +3573,82 @@ Graph<Weight, is_directed>::dinic(size_t src, size_t dst, Weight lim) const {
 	}
 
 	return std::make_tuple(max_flow, std::move(min_cut), std::move(flows));
+}
+
+template <typename Weight, bool is_directed>
+typename Graph<Weight, is_directed>::Hld
+Graph<Weight, is_directed>::hld(size_t rt) const {
+	auto n = m_adjs_of.size();
+	assert(rt < n);
+	std::vector<size_t>
+		prts(n, -1),
+		szs(n, 1),
+		deps(n),
+		hchs(n, -1),
+		tops(n),
+		dfns(n),
+		verts(n);
+	{
+		std::function<void(size_t)> dfs = [&](size_t cur) -> void {
+			for (auto adj : m_adjs_of[cur]) {
+				const auto &edge = m_edges[adj];
+				if (is_directed && cur != edge.u) {
+					assert(prts[cur] == edge.u);
+					continue;
+				}
+				auto nxt = ((edge.u == cur) ? edge.v : edge.u);
+				;
+				assert(cur != nxt);
+				if (nxt == prts[cur]) continue;
+				assert(prts[nxt] == size_t(-1));
+				prts[nxt] = cur;
+				deps[nxt] = deps[cur] + 1;
+				dfs(nxt);
+				szs[cur] += szs[nxt];
+				if (hchs[cur] == size_t(-1) || szs[nxt] > szs[hchs[cur]]) {
+					hchs[cur] = nxt;
+				}
+			}
+		};
+		prts[rt] = rt;
+		deps[rt] = 0;
+		dfs(rt);
+	}
+	{
+		size_t tm = 0;
+		std::function<void(size_t)> dfs = [&](size_t cur) -> void {
+			dfns[cur] = tm;
+			verts[tm] = cur;
+			++tm;
+			if (~hchs[cur]) {
+				tops[hchs[cur]] = tops[cur];
+				dfs(hchs[cur]);
+			}
+			for (auto adj : m_adjs_of[cur]) {
+				const auto &edge = m_edges[adj];
+				if (is_directed && cur != edge.u) {
+					assert(prts[cur] == edge.u);
+					continue;
+				}
+				auto nxt = ((edge.u == cur) ? edge.v : edge.u);
+				;
+				assert(cur != nxt);
+				if (nxt == prts[cur]) continue;
+				if (nxt == hchs[cur]) continue;
+				tops[nxt] = nxt;
+				dfs(nxt);
+			}
+		};
+		tops[rt] = rt;
+		dfs(rt);
+	}
+	return Hld{
+		std::move(prts),
+		std::move(szs),
+		std::move(deps),
+		std::move(hchs),
+		std::move(tops),
+		std::move(dfns),
+		std::move(verts),
+	};
 }
