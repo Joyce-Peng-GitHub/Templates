@@ -1470,6 +1470,45 @@ std::vector<uint64_t> modMulInvs(const std::vector<uint64_t> &arr, uint64_t mod)
 }
 ```
 
+== Euclidean-Like Algorithms
+
+The #underline[Euclidean-like/floor-sum Euclidean] algorithms are designed for the summation of sequence of the form $floor((a dot i + b) / m)$.
+
+The sum
+$
+	sum_(i = 0)^(n - 1) floor((a dot i + b) / m) space (a,b,m,n in NN, space m != 0)
+$
+#h(-indent) can be computed by the following algorithm.
+
+```cpp
+/**
+ * @warning Be careful of overflow in a * n + b.
+ */
+uint64_t floorSum(uint64_t n, uint64_t m, uint64_t a, uint64_t b) {
+	uint64_t ans = 0;
+	while (true) {
+		if (a >= m) {
+			ans += n * (n - 1) / 2 * (a / m);
+			a %= m;
+		}
+		if (b >= m) {
+			ans += n * (b / m);
+			b %= m;
+		}
+
+		auto ym = a * n + b;
+		if (ym < m) break;
+		n = ym / m;
+		b = ym % m;
+		std::swap(m, a);
+	}
+	return ans;
+}
+```
+
+- Time Complexity: $O(log m)$.
+- Space Complexity: $O(1)$.
+
 == Extended Chinese Remainder Theorem
 
 Solve the system of congruences

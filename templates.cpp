@@ -2415,6 +2415,30 @@ std::vector<uint64_t> modMulInvs(const std::vector<uint64_t> &arr, uint64_t mod)
 }
 
 /**
+ * @warning Be careful of overflow in a * n + b.
+ */
+uint64_t floorSum(uint64_t n, uint64_t m, uint64_t a, uint64_t b) {
+	uint64_t ans = 0;
+	while (true) {
+		if (a >= m) {
+			ans += n * (n - 1) / 2 * (a / m);
+			a %= m;
+		}
+		if (b >= m) {
+			ans += n * (b / m);
+			b %= m;
+		}
+
+		auto ym = a * n + b;
+		if (ym < m) break;
+		n = ym / m;
+		b = ym % m;
+		std::swap(m, a);
+	}
+	return ans;
+}
+
+/**
  * @brief solve the system of equations x % mod == rem for each (mod, rem), the
  * solution expressed as x = period * n + ans for any integer n. This is an online
  * algorithm. Each call to this function adds a new equation to the system. You
