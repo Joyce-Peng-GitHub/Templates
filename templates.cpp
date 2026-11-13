@@ -2029,6 +2029,72 @@ gaussEliminate(std::vector<std::vector<T>> aug_rows, size_t var_num, T eps) {
 	return {sols, basis};
 }
 
+template <typename Uint = uint64_t>
+struct XorBasis {
+	static constexpr size_t B = std::numeric_limits<Uint>::digits;
+
+	const std::array<Uint, B> &data() const noexcept { return m_basis; }
+	size_t rank() const noexcept { return m_rk; }
+
+	/**
+	 * @return true iff x increases the rank.
+	 */
+	bool insert(Uint x) noexcept {
+		for (size_t i = B; i--;) {
+			if (!((x >> i) & Uint(1))) continue;
+			if (!m_basis[i]) {
+				m_basis[i] = x;
+				++m_rk;
+				return true;
+			}
+			x ^= m_basis[i];
+		}
+		return false;
+	}
+	void merge(const XorBasis &other) noexcept {
+		for (auto &bv : other.m_basis) insert(bv);
+	}
+	void clear() noexcept {
+		m_basis.fill(0);
+		m_rk = 0;
+	}
+
+	/**
+	 * @return whether x can be obtained by xor-ing a subset of the basis.
+	 *
+	 * @note contains(0) is always true.
+	 */
+	bool contains(Uint x) const noexcept {
+		for (size_t i = B; i--;) {
+			if ((x >> i) & Uint(1)) x ^= m_basis[i];
+		}
+		return !x;
+	}
+
+	/**
+	 * @return the minimum of seed xor the xor sum of any subset of the basis.
+	 */
+	Uint minXor(Uint seed = 0) const noexcept {
+		for (size_t i = B; i--;) {
+			seed = std::min(seed, Uint(seed ^ m_basis[i]));
+		}
+		return seed;
+	}
+	/**
+	 * @return the maximum of seed xor the xor sum of any subset of the basis.
+	 */
+	Uint maxXor(Uint seed = 0) const noexcept {
+		for (size_t i = B; i--;) {
+			seed = std::max(seed, Uint(seed ^ m_basis[i]));
+		}
+		return seed;
+	}
+
+protected:
+	std::array<Uint, B> m_basis{};
+	size_t m_rk = 0;
+};
+
 namespace mo {
 	namespace std {
 		struct Query {

@@ -1923,9 +1923,93 @@ gaussEliminate(std::vector<std::vector<T>> aug_rows, size_t var_num, T eps) {
 ```
 
 For an $m times n$ augmented matrix ranked $r$ and $v$ variables,
-
 - Time Complexity: $O(m dot n dot v)$.
 - Space Complexity: $O(m dot n + n dot v)$, in which the auxiliary space is $Theta(v)$.
+
+== Linear Basis
+
+Given a field $FF$ and $m$ vectors $(arrow(v_i))_(i = 0)^(m - 1) in (FF^n)^m space (m,n in NN^*)$, we can obtain a basis of $op("span") {arrow(v_i): i in NN and i < m}$ by:
++ Construct a matrix
+  $
+		M = mat(arrow(v_0)^top; dots.v; arrow(v_(m - 1))^top).
+	$
++ Reduce $M$ to the row-echelon form (no need for reduced row-echelon form).
++ The non-zero rows left in the matrix form a basis.
+Note that a basis obtained in such way may #strong[not] be the original vectors. To get a basis consisting of only original vectors (instead of their linear combinations), simply maintain the original index of each row during the elimination.
+
+To test whether a vector can be linearly expressed by a basis, it suffices to use the basis vectors to perform elimination on that vector one by one.
+
+=== Xor Basis
+
+A basis defined on $"GF"(2)$ field is called an #emph[xor basis]. It can be applied to the #strong[maximum subset xor sum] problem.
+
+```cpp
+template <typename Uint = uint64_t>
+struct XorBasis {
+	static constexpr size_t B = std::numeric_limits<Uint>::digits;
+
+	const std::array<Uint, B> &data() const noexcept { return m_basis; }
+	size_t rank() const noexcept { return m_rk; }
+
+	/**
+	 * @return true iff x increases the rank.
+	 */
+	bool insert(Uint x) noexcept {
+		for (size_t i = B; i--;) {
+			if (!((x >> i) & Uint(1))) continue;
+			if (!m_basis[i]) {
+				m_basis[i] = x;
+				++m_rk;
+				return true;
+			}
+			x ^= m_basis[i];
+		}
+		return false;
+	}
+	void merge(const XorBasis &other) noexcept {
+		for (auto &bv : other.m_basis) insert(bv);
+	}
+	void clear() noexcept {
+		m_basis.fill(0);
+		m_rk = 0;
+	}
+
+	/**
+	 * @return whether x can be obtained by xor-ing a subset of the basis.
+	 *
+	 * @note contains(0) is always true.
+	 */
+	bool contains(Uint x) const noexcept {
+		for (size_t i = B; i--;) {
+			if ((x >> i) & Uint(1)) x ^= m_basis[i];
+		}
+		return !x;
+	}
+
+	/**
+	 * @return the minimum of seed xor the xor sum of any subset of the basis.
+	 */
+	Uint minXor(Uint seed = 0) const noexcept {
+		for (size_t i = B; i--;) {
+			seed = std::min(seed, Uint(seed ^ m_basis[i]));
+		}
+		return seed;
+	}
+	/**
+	 * @return the maximum of seed xor the xor sum of any subset of the basis.
+	 */
+	Uint maxXor(Uint seed = 0) const noexcept {
+		for (size_t i = B; i--;) {
+			seed = std::max(seed, Uint(seed ^ m_basis[i]));
+		}
+		return seed;
+	}
+
+protected:
+	std::array<Uint, B> m_basis{};
+	size_t m_rk = 0;
+};
+```
 
 = Polynomial
 
