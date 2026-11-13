@@ -1943,6 +1943,92 @@ std::vector<size_t> longestIncrSubseq(Iter begin, Iter end, Cmp cmp = Cmp()) {
 	return res;
 }
 
+/**
+ * @pre T is a floating-point type, or an integer type modulo a prime number
+ * 	supporting multiplicative inversion.
+ *
+ * @return {sols, basis}, where sols[i] is a particular solution of the i-th
+ * 	equation system and basis[i] is the i-the basis vector of the null space.
+ *
+ * @note The rank of the matrix can be obtained by rk + basis.size() == var_num.
+ *
+ * @warning When var_num == 0, equation `0 = 0` and `0 = 1` both yield an empty
+ * 	solution vector.
+ */
+template <typename T = double>
+std::pair<std::vector<std::vector<T>>, std::vector<std::vector<T>>>
+gaussEliminate(std::vector<std::vector<T>> aug_rows, size_t var_num, T eps) {
+	assert(eps >= T());
+	size_t m = aug_rows.size(), n = (m ? aug_rows[0].size() : var_num);
+	assert(var_num <= n);
+	assert(std::all_of(aug_rows.begin(), aug_rows.end(),
+					   [=](const std::vector<T> &row) { return (row.size() == n); }));
+	size_t l = n - var_num, rk = 0;
+	std::vector<std::vector<T>> sols(l), basis;
+	std::vector<size_t> pvt_rows(var_num, size_t(-1));
+
+	for (size_t i = 0; i < var_num && rk < m; ++i) {
+		// row pivoting
+		{
+			size_t pvt_row = rk;
+			for (size_t j = rk + 1; j < m; ++j) {
+				if (std::abs(aug_rows[j][i]) > std::abs(aug_rows[pvt_row][i])) {
+					pvt_row = j;
+				}
+			}
+			if (std::abs(aug_rows[pvt_row][i]) <= eps) continue;
+			std::swap(aug_rows[rk], aug_rows[pvt_row]);
+		}
+
+		pvt_rows[i] = rk;
+		auto &pvt_coef = aug_rows[rk][i];
+		for (size_t j = i + 1; j < n; ++j) aug_rows[rk][j] /= pvt_coef;
+		pvt_coef = T(1);
+
+		for (size_t j = 0; j < m; ++j) {
+			if (j == rk) continue;
+			auto &fac = aug_rows[j][i];
+			for (size_t k = i + 1; k < n; ++k) {
+				aug_rows[j][k] -= fac * aug_rows[rk][k];
+			}
+			fac = T();
+		}
+
+		++rk;
+	}
+
+	for (size_t i = 0; i < l; ++i) {
+		bool solvable = true;
+		for (size_t j = rk; j < m; ++j) {
+			if (std::abs(aug_rows[j][var_num + i]) > eps) {
+				solvable = false;
+				break;
+			}
+		}
+		if (!solvable) continue;
+
+		auto &sol = sols[i];
+		sol.resize(var_num);
+		for (size_t j = 0; j < var_num; ++j) {
+			if (pvt_rows[j] == size_t(-1)) continue;
+			sol[j] = aug_rows[pvt_rows[j]][var_num + i];
+		}
+	}
+
+	basis.reserve(var_num - rk);
+	for (size_t i = 0; i < var_num; ++i) {
+		if (pvt_rows[i] != size_t(-1)) continue;
+		auto &vec = basis.emplace_back(std::vector<T>(var_num));
+		vec[i] = T(1);
+		for (size_t j = 0; j < var_num; ++j) {
+			if (pvt_rows[j] == size_t(-1)) continue;
+			vec[j] = -aug_rows[pvt_rows[j]][i];
+		}
+	}
+
+	return {sols, basis};
+}
+
 namespace mo {
 	namespace std {
 		struct Query {
