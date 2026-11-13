@@ -2076,7 +2076,7 @@ struct XorBasis {
 	 */
 	Uint minXor(Uint seed = 0) const noexcept {
 		for (size_t i = B; i--;) {
-			seed = std::min(seed, Uint(seed ^ m_basis[i]));
+			seed = std::min(seed, (seed ^ m_basis[i]));
 		}
 		return seed;
 	}
@@ -2085,7 +2085,7 @@ struct XorBasis {
 	 */
 	Uint maxXor(Uint seed = 0) const noexcept {
 		for (size_t i = B; i--;) {
-			seed = std::max(seed, Uint(seed ^ m_basis[i]));
+			seed = std::max(seed, (seed ^ m_basis[i]));
 		}
 		return seed;
 	}
