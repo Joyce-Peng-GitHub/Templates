@@ -1321,9 +1321,11 @@ There are five types of heap implementation, specified by the tag:
   )
 ]<tab:pbds-heap-tags>
 
-= Number Theory
+= Math
 
-== Cantor Expansion
+== Number Theory
+
+=== Cantor Expansion
 
 ```cpp
 /**
@@ -1352,7 +1354,7 @@ uint64_t cantorExpand(const std::vector<T> &arr, Cmp cmp = Cmp(), Eq eq = Eq()) 
 }
 ```
 
-== Quick Power
+=== Quick Power
 
 ```cpp
 template <typename Uint = uint64_t, typename Aux = __uint128_t,
@@ -1370,7 +1372,7 @@ inline Uint qPowMod(Uint base, Uint exp, Uint mod) {
 }
 ```
 
-== Extended Euclidean Algorithm
+=== Extended Euclidean Algorithm
 
 ```cpp
 /**
@@ -1389,7 +1391,7 @@ inline int64_t exGcd(int64_t a, int64_t b, int64_t &x, int64_t &y) {
 }
 ```
 
-== Modular Multiplicative Inverse
+=== Modular Multiplicative Inverse
 
 #definition[Modular Multiplicative Inverse][
   Let $m$ be the modulus and $x$ be an integer. An integer $y$ is called a #emph[multiplicative inverse of $x$ modulo $m$] if
@@ -1470,7 +1472,7 @@ std::vector<uint64_t> modMulInvs(const std::vector<uint64_t> &arr, uint64_t mod)
 }
 ```
 
-== Euclidean-Like Algorithms
+=== Euclidean-Like Algorithms
 
 The #underline[Euclidean-like/floor-sum Euclidean] algorithms are designed for the summation of sequence of the form $floor((a dot i + b) / m)$.
 
@@ -1509,7 +1511,7 @@ uint64_t floorSum(uint64_t n, uint64_t m, uint64_t a, uint64_t b) {
 - Time Complexity: $O(log m)$.
 - Space Complexity: $O(1)$.
 
-== Extended Chinese Remainder Theorem
+=== Extended Chinese Remainder Theorem
 
 Solve the system of congruences
 $
@@ -1550,39 +1552,7 @@ inline bool exCrt(
 - Time complexity: $O(log m_i)$ for a single call. $O(n log(max_(i = 0)^(n - 1) m_i))$ for the entire equation system.
 - Space complexity: $O(1)$.
 
-== Derangement
-
-#definition[Derangement][
-  A derangement is a permutation of the elements of a set, such that no element appears in its original position.
-]<def:derangement>
-
-The number of derangements of $n in NN$ distinct elements, denoted by $D_n$, satisfies
-$
-  D_n = n! sum_(i = 0)^n (-1)^i / i! = floor(n! / "e" + 1/2) \
-  D_n = n D_(n - 1) + (-1)^n space (n >= 1) \
-  D_n = (n - 1)(D_(n - 1) + D_(n - 2)) space (n >= 2)
-$
-
-```cpp
-inline uint64_t derangement(uint64_t n, uint64_t mod) {
-	uint64_t d = 1;
-	for (uint64_t i = 1; i <= n; ++i) {
-		d = (i * d % mod + ((i & 1) ? (mod - 1) : 1)) % mod;
-	}
-	return d;
-}
-
-inline std::vector<uint64_t> derangements(uint64_t max, uint64_t mod) {
-	auto d = std::vector<uint64_t>(max + 1);
-	d[0] = 1;
-	for (uint64_t i = 1; i <= max; ++i) {
-		d[i] = (i * d[i - 1] % mod + ((i & 1) ? (mod - 1) : 1)) % mod;
-	}
-	return d;
-}
-```
-
-== Prime Sieves
+=== Prime Sieves
 
 ```cpp
 std::vector<uint32_t> sieveOfEratosthenes(uint32_t max) {
@@ -1703,7 +1673,7 @@ linearSieve(uint32_t max, Func func = Func()) {
 }
 ```
 
-== Euler's Totient Function
+=== Euler's Totient Function
 
 Euler's totient function $phi(n)$ of a positive integer $n$ is defined as
 $
@@ -1770,7 +1740,7 @@ std::vector<uint32_t> eulerFuncsOf(size_t max) {
 }
 ```
 
-== Primality Test and Factorization
+=== Primality Test and Factorization
 
 ```cpp
 /**
@@ -1869,9 +1839,43 @@ void factorize(uint64_t num, std::map<uint64_t, uint32_t> &factors) {
 }
 ```
 
-= Linear Algebra
+== Combinatorics
 
-== Gaussian Elimination
+=== Derangement
+
+#definition[Derangement][
+  A derangement is a permutation of the elements of a set, such that no element appears in its original position.
+]<def:derangement>
+
+The number of derangements of $n in NN$ distinct elements, denoted by $D_n$, satisfies
+$
+  D_n = n! sum_(i = 0)^n (-1)^i / i! = floor(n! / "e" + 1/2) \
+  D_n = n D_(n - 1) + (-1)^n space (n >= 1) \
+  D_n = (n - 1)(D_(n - 1) + D_(n - 2)) space (n >= 2)
+$
+
+```cpp
+inline uint64_t derangement(uint64_t n, uint64_t mod) {
+	uint64_t d = 1;
+	for (uint64_t i = 1; i <= n; ++i) {
+		d = (i * d % mod + ((i & 1) ? (mod - 1) : 1)) % mod;
+	}
+	return d;
+}
+
+inline std::vector<uint64_t> derangements(uint64_t max, uint64_t mod) {
+	auto d = std::vector<uint64_t>(max + 1);
+	d[0] = 1;
+	for (uint64_t i = 1; i <= max; ++i) {
+		d[i] = (i * d[i - 1] % mod + ((i & 1) ? (mod - 1) : 1)) % mod;
+	}
+	return d;
+}
+```
+
+== Linear Algebra
+
+=== Gaussian Elimination
 
 ```cpp
 /**
@@ -1965,7 +1969,7 @@ For an $m times n$ augmented matrix ranked $r$ and $v$ variables,
 - Time Complexity: $O(m dot n dot v)$.
 - Space Complexity: $O(m dot n + n dot v)$, in which the auxiliary space is $Theta(v)$.
 
-== Linear Basis
+=== Linear Basis
 
 Given a field $FF$ and $m$ vectors $(arrow(v_i))_(i = 0)^(m - 1) in (FF^n)^m space (m,n in NN^*)$, we can obtain a basis of $op("span") {arrow(v_i): i in NN and i < m}$ by:
 + Construct a matrix
@@ -1978,7 +1982,7 @@ Note that a basis obtained in such way may #strong[not] be the original vectors.
 
 To test whether a vector can be linearly expressed by a basis, it suffices to use the basis vectors to perform elimination on that vector one by one.
 
-=== Xor Basis
+==== Xor Basis
 
 A basis defined on $"GF"(2)$ field is called an #emph[xor basis]. It can be applied to the #strong[maximum subset xor sum] problem.
 
