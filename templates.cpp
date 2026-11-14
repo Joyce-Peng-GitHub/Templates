@@ -2815,6 +2815,58 @@ inline size_t periodLength(Iter begin, Iter end) {
 	return (pi.size() - pi.back());
 }
 
+/**
+ * @return z[i] is the longest common prefix length of [beg, end) and its
+ * 	suffix at i.
+ */
+template <typename Iter, typename = RequireFwdIter<Iter>>
+inline std::vector<size_t> zFuncOf(Iter beg, Iter end) {
+	const size_t n = std::distance(beg, end);
+	std::vector<size_t> z(n);
+	if (!n) return z;
+	z[0] = n;
+	for (size_t i = 1, b = 0, e = 1; i < n; ++i) {
+		if (i < e) z[i] = std::min(e - i, z[i - b]);
+		while (i + z[i] < n &&
+			   *std::next(beg, z[i]) == *std::next(beg, i + z[i])) ++z[i];
+		if (i + z[i] > e) {
+			b = i;
+			e = i + z[i];
+		}
+	}
+	return z;
+}
+
+/**
+ * @return ext[i] is the longest common prefix length of the pattern and the
+ * 	text suffix at i.
+ */
+template <typename TxtIter, typename PtnIter,
+		  typename = RequireFwdIter<TxtIter>, typename = RequireFwdIter<PtnIter>>
+inline std::vector<size_t> exKmp(TxtIter txt_beg, TxtIter txt_end,
+								 PtnIter ptn_beg, PtnIter ptn_end) {
+	const size_t txt_sz = std::distance(txt_beg, txt_end);
+	const size_t ptn_sz = std::distance(ptn_beg, ptn_end);
+	std::vector<size_t> ext(txt_sz);
+	if (!txt_sz || !ptn_sz) return ext;
+	auto z = zFuncOf(ptn_beg, ptn_end);
+	size_t b = 0, e = 0;
+	for (size_t i = 0; i < txt_sz; ++i) {
+		if (i < e) {
+			ext[i] = std::min(e - i, z[i - b]);
+		}
+		while (ext[i] < ptn_sz && i + ext[i] < txt_sz &&
+			   *std::next(ptn_beg, ext[i]) == *std::next(txt_beg, i + ext[i])) {
+			++ext[i];
+		}
+		if (i + ext[i] > e) {
+			b = i;
+			e = i + ext[i];
+		}
+	}
+	return ext;
+}
+
 template <typename Mod = uint32_t, typename Aux = uint64_t, typename = std::enable_if_t<std::is_unsigned<Mod>::value && std::is_unsigned<Aux>::value && sizeof(Mod) * 2 == sizeof(Aux)>>
 std::vector<Mod> hashOf(const std::string &s, Mod base = 233, Mod mod = 993244853) {
 	auto h = std::vector<Mod>(s.size() + 1);

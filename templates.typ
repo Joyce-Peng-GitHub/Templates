@@ -2487,6 +2487,74 @@ inline size_t periodLength(Iter begin, Iter end) {
 }
 ```
 
+== The Z-Algorithm and Extended KMP
+
+#definition[Z Function][
+  Given a sequence $s = (s_i)_(i = 0)^(m - 1) space (m in NN)$ and a pattern sequence $t = (t_i)_(i = 0)^(n - 1) space (n in NN)$, define the #emph[Z function of $s$ over $t$], $z = (z_i)_(i = 0)^(m - 1) in NN^m$, as
+  $
+    z_i = op("lcp")(s_([i, m)), t) space (i in NN, space i < m).
+  $
+	
+	Particularly, when $s = t$, $z$ is called the #emph[Z function of $s$].
+]<def:z-func>
+
+```cpp
+/**
+ * @return z[i] is the longest common prefix length of [beg, end) and its
+ * 	suffix at i.
+ */
+template <typename Iter, typename = RequireFwdIter<Iter>>
+inline std::vector<size_t> zFuncOf(Iter beg, Iter end) {
+	const size_t n = std::distance(beg, end);
+	std::vector<size_t> z(n);
+	if (!n) return z;
+	z[0] = n;
+	for (size_t i = 1, b = 0, e = 1; i < n; ++i) {
+		if (i < e) z[i] = std::min(e - i, z[i - b]);
+		while (i + z[i] < n &&
+			   *std::next(beg, z[i]) == *std::next(beg, i + z[i])) ++z[i];
+		if (i + z[i] > e) {
+			b = i;
+			e = i + z[i];
+		}
+	}
+	return z;
+}
+
+/**
+ * @return ext[i] is the longest common prefix length of the pattern and the
+ * 	text suffix at i.
+ */
+template <typename TxtIter, typename PtnIter,
+		  typename = RequireFwdIter<TxtIter>, typename = RequireFwdIter<PtnIter>>
+inline std::vector<size_t> exKmp(TxtIter txt_beg, TxtIter txt_end,
+								 PtnIter ptn_beg, PtnIter ptn_end) {
+	const size_t txt_sz = std::distance(txt_beg, txt_end);
+	const size_t ptn_sz = std::distance(ptn_beg, ptn_end);
+	std::vector<size_t> ext(txt_sz);
+	if (!txt_sz || !ptn_sz) return ext;
+	auto z = zFuncOf(ptn_beg, ptn_end);
+	size_t b = 0, e = 0;
+	for (size_t i = 0; i < txt_sz; ++i) {
+		if (i < e) {
+			ext[i] = std::min(e - i, z[i - b]);
+		}
+		while (ext[i] < ptn_sz && i + ext[i] < txt_sz &&
+			   *std::next(ptn_beg, ext[i]) == *std::next(txt_beg, i + ext[i])) {
+			++ext[i];
+		}
+		if (i + ext[i] > e) {
+			b = i;
+			e = i + ext[i];
+		}
+	}
+	return ext;
+}
+```
+
+- Time Complexity: $Theta(m + n)$ when using random access iterators.
+- Space Complexity: $Theta(m + n)$.
+
 == Suffix Array
 
 Let $Sigma$ be an alphabet,
