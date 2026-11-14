@@ -1417,7 +1417,7 @@ inline int64_t exGcd(int64_t a, int64_t b, int64_t &x, int64_t &y) {
 
 By @thm:fermat-little-theorem, if the modulus is a prime number $p$, then an integer $x$ has multiplicative inverses iff $p divides.not x$ (including $x != 0$), and
 $
-	x^(-1) equiv x^(p - 2) quad (mod p).
+  x^(-1) equiv x^(p - 2) quad (mod p).
 $
 
 ```cpp
@@ -1478,7 +1478,7 @@ The #underline[Euclidean-like/floor-sum Euclidean] algorithms are designed for t
 
 The sum
 $
-	sum_(i = 0)^(n - 1) floor((a dot i + b) / m) space (a,b,m,n in NN, space m != 0)
+  sum_(i = 0)^(n - 1) floor((a dot i + b) / m) space (a,b,m,n in NN, space m != 0)
 $
 #h(-indent) can be computed by the following algorithm.
 
@@ -1974,8 +1974,8 @@ For an $m times n$ augmented matrix ranked $r$ and $v$ variables,
 Given a field $FF$ and $m$ vectors $(arrow(v_i))_(i = 0)^(m - 1) in (FF^n)^m space (m,n in NN^*)$, we can obtain a basis of $op("span") {arrow(v_i): i in NN and i < m}$ by:
 + Construct a matrix
   $
-		M = mat(arrow(v_0)^top; dots.v; arrow(v_(m - 1))^top).
-	$
+    M = mat(arrow(v_0)^top; dots.v; arrow(v_(m - 1))^top).
+  $
 + Reduce $M$ to the row-echelon form (no need for reduced row-echelon form).
 + The non-zero rows left in the matrix form a basis.
 Note that a basis obtained in such way may #strong[not] be the original vectors. To get a basis consisting of only original vectors (instead of their linear combinations), simply maintain the original index of each row during the elimination.
@@ -2430,7 +2430,7 @@ namespace mo {
 }
 ```
 
-== Prefix Function
+== Prefix Function and KMP
 
 ```cpp
 template <typename Iter, typename = RequireFwdIter<Iter>>
@@ -2494,8 +2494,8 @@ inline size_t periodLength(Iter begin, Iter end) {
   $
     z_i = op("lcp")(s_([i, m)), t) space (i in NN, space i < m).
   $
-	
-	Particularly, when $s = t$, $z$ is called the #emph[Z function of $s$].
+
+  Particularly, when $s = t$, $z$ is called the #emph[Z function of $s$].
 ]<def:z-func>
 
 ```cpp
